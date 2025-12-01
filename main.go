@@ -28,9 +28,9 @@ func main() {
 	}
 
 	addr := "0.0.0.0:" + port
-	log.Printf("Server starting on %s", addr)
-	log.Printf("API endpoint: http://localhost:%s/api/fill", port)
-	log.Printf("Script endpoint: http://localhost:%s/script.js", port)
+	log.Printf("Server starting on %s (HTTPS)", addr)
+	log.Printf("API endpoint: https://localhost:%s/api/fill", port)
+	log.Printf("Script endpoint: https://localhost:%s/script.js", port)
 
 	server := &http.Server{
 		Addr:         addr,
@@ -39,13 +39,12 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	if err := server.ListenAndServe(); err != nil {
+	if err := server.ListenAndServeTLS("cert.pem", "key.pem"); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
 
 func serveScript(w http.ResponseWriter, r *http.Request) {
-	log.Printf("hello")
 	// Only allow GET requests
 	if r.Method != "GET" {
 		respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -56,14 +55,19 @@ func serveScript(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Cache-Control", "no-cache") // Don't cache during dev
 
-	apiURL := os.Getenv("API_URL")
-	if apiURL == "" {
-		apiURL = fmt.Sprintf("http://localhost:%s/api/fill", os.Getenv("PORT"))
-		if os.Getenv("PORT") == "" {
-			apiURL = "http://localhost:8000/api/fill"
-		}
-		log.Printf("Warning: API_URL not set, using default: %s", apiURL)
+	ip := os.Getenv("IP")
+	if ip == "" {
+		ip = "localhost"
+		log.Printf("Warning: IP not set, using default: %s", ip)
 	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+		log.Printf("Warning: PORT not set, using default: %s", port)
+	}
+
+	apiURL := fmt.Sprintf("https://%s:%s/api/fill", ip, port)
 
 	script, err := os.ReadFile("script.js")
 	if err != nil {
