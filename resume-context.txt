@@ -1,0 +1,916 @@
+Project Path: resume-builder
+
+Source Tree:
+
+```txt
+resume-builder
+├── README.md
+├── bookmarklet.js
+├── experience.md
+├── fonts
+│   ├── DejaVuSans-Bold.ttf
+│   ├── DejaVuSans-BoldOblique.ttf
+│   ├── DejaVuSans-ExtraLight.ttf
+│   ├── DejaVuSans-Oblique.ttf
+│   ├── DejaVuSans.ttf
+│   ├── DejaVuSansCondensed-Bold.ttf
+│   ├── DejaVuSansCondensed-BoldOblique.ttf
+│   ├── DejaVuSansCondensed-Oblique.ttf
+│   └── DejaVuSansCondensed.ttf
+├── go.mod
+├── go.sum
+├── icons-png
+│   ├── box.png
+│   ├── building-2.png
+│   ├── github.png
+│   ├── graduation-cap.png
+│   ├── layers.png
+│   ├── link.png
+│   ├── linkedin.png
+│   ├── mail.png
+│   ├── map-pin.png
+│   ├── phone.png
+│   └── user.png
+├── main.go
+└── resume.json
+
+```
+
+`README.md`:
+
+```md
+# Resume Builder
+
+A Go-based PDF resume generator with custom fonts and clean, professional layouts.
+
+## Features
+
+- **Clean PDF Generation**: Creates professional resumes using the Maroto v2 library
+- **Custom Fonts**: Supports DejaVu Sans with ExtraLight and Bold variants
+- **Icon Integration**: Uses PNG icons for contact information and section headers
+- **Hyperlinks**: Clickable links for website, LinkedIn, and GitHub
+- **Responsive Layout**: Contact information in organized 2x3 grid
+- **Professional Styling**: Blue accent colors and clean typography
+
+## Requirements
+
+- Go 1.21+
+- DejaVu fonts (included in `/fonts` directory)
+
+## Installation
+
+```bash
+git clone https://github.com/lukestogsdill/resume-builder.git
+cd resume-builder
+go mod tidy
+```
+
+## Usage
+
+```bash
+go run .
+```
+
+This generates `resume.pdf` in the current directory.
+
+## Customization
+
+### Personal Information
+Edit the personal details directly in `main.go`:
+- Name and contact information
+- Professional summary
+- Work experience entries
+- Education details
+- Technical skills
+
+### Styling
+- **Colors**: Modify `getPrimaryColor()` function for accent colors
+- **Fonts**: DejaVu Sans variants are loaded automatically
+- **Icons**: Replace PNG files in `/icons-png` directory
+- **Layout**: Adjust spacing and alignment in the layout functions
+
+### Icons
+The contact section uses these icons:
+- `map-pin.png` - Address
+- `phone.png` - Phone number
+- `mail.png` - Email
+- `link.png` - Website
+- `linkedin.png` - LinkedIn profile
+- `github.png` - GitHub profile
+
+## Project Structure
+
+```
+├── main.go           # Main application logic
+├── fonts/            # DejaVu font files
+├── icons-png/        # Contact and section icons
+├── go.mod           # Go module definition
+└── README.md        # This file
+```
+
+## Dependencies
+
+- `github.com/johnfercher/maroto/v2` - PDF generation library
+
+## License
+
+MIT License - feel free to use and modify for your own resume needs.
+```
+
+`bookmarklet.js`:
+
+```js
+javascript:(function(){const forms=document.querySelectorAll('form');if(!forms.length){alert('No forms found!');return;}const fields=[];forms.forEach(form=>{const inputs=form.querySelectorAll('input, textarea, select');inputs.forEach(input=>{if(input.type==='submit'||input.type==='button')return;const field={name:input.name||input.id||'',type:input.type||input.tagName.toLowerCase(),label:getLabel(input),value:input.value||'',required:input.required||false,placeholder:input.placeholder||''};if(input.tagName==='SELECT'){field.options=Array.from(input.options).map(o=>o.text);}fields.push(field);});});function getLabel(input){const label=document.querySelector(`label[for="${input.id}"]`);if(label)return label.textContent.trim();const parent=input.closest('label');if(parent)return parent.textContent.replace(input.value,'').trim();return input.placeholder||input.name||'';}console.log('Found fields:',fields);alert('Found '+fields.length+' fields. Filling with dummy data...');const mockResponse={name:'Luke Henderson',email:'luke@example.com',phone:'555-123-4567',message:'This is auto-filled test content! Ready to integrate with your API.'};forms.forEach(form=>{const inputs=form.querySelectorAll('input, textarea, select');inputs.forEach(input=>{const key=input.name||input.id;if(mockResponse[key]){if(input.type==='checkbox'){input.checked=mockResponse[key];}else if(input.type==='radio'){if(input.value===mockResponse[key])input.checked=true;}else{input.value=mockResponse[key];input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}}});});alert('Form filled with dummy data!');})();
+
+```
+
+`experience.md`:
+
+```md
+Full Stack Developer
+
+personal site: https://lustogs.com
+
+# work experience
+
+Co-founder | Lobby Media Web Design https://lobby.media June 2024 - Current
+
+    Co-founded a web design agency dedicated to delivering high-performance, custom-built websites for small businesses, successfully acquiring and servicing live client projects.
+
+    Delivered Production Client Solutions including a comprehensive medical practitioner website for vascular and wound care specialists, handling real patient inquiries and appointment scheduling with live traffic and business impact.
+
+    Led Full-Cycle Development for live client deployments utilizing modern technologies like Svelte5, Next.js, and headless CMS (SveltiaCMS) for scalable, maintainable solutions.
+
+    Achieved Proven Performance Results on live client sites:
+
+        Optimized Performance: Delivered excellent Google PageSpeed scores (98-100/100) for production websites serving real users, ensuring near-instant load times that directly impact client business metrics.
+
+        Mobile-First & Responsive Design: Implemented flawless cross-device experiences for actual user traffic, capturing the 60%+ mobile user base with measurable engagement improvements.
+
+        Enhanced Online Visibility: Applied SEO best practices and managed Google Ads campaigns for live client businesses, generating measurable increases in patient inquiries and appointment bookings.
+
+    Developed Industry-Specific Demo Showcases for legal and landscaping sectors to demonstrate versatility and attract potential clients in diverse markets.
+
+    Established a Client-Centric Service Model offering end-to-end solutions including unique in-house design, development, hosting, unlimited revisions, and continuous support.
+
+    live client site: https://vascularandwound-com.pages.dev | demo showcases: https://landscape.lobby.media, https://legal.lobby.media
+
+freelance software consultant: this includes IoT alert system July 2023 - June 2024
+
+IoT Alert Management System Design (TruVolt) 
+
+    Designed a comprehensive full-stack solution for managing and monitoring IoT devices, focused on delivering near real-time alerts and robust data management.
+
+        System Architecture: Conceptualized a scalable system featuring a Next.js frontend for device registration, control parameter setting, data visualization, and report scheduling.
+
+        Core Components: Planned for a SQL database for efficient data organization, a Golang-based microservice for rapid alert distribution, an abstraction API for streamlined alert creation and storage, and a caching layer to optimize performance and reduce database load for managing IoT device alerts.
+
+# projects
+
+Sibyl - Morality Assessment Platform https://sibyl.it.com
+
+    Built a full-stack web application providing daily morality quizzes with personalized analytics and comparative user insights.
+
+        Frontend Development: Implemented React-based client with TanStack Query for efficient server state management, real-time data synchronization, and optimistic updates for seamless user interactions.
+
+        Backend Infrastructure: Leveraged Convex as a serverless backend-as-a-service for real-time database operations, automatic API generation, and reactive data subscriptions enabling live updates across user sessions. Implemented ORPC for type-safe API communication between frontend and backend.
+
+        Data Analytics Engine: Developed aggregation algorithms to process user response patterns, generate comparative analysis against anonymized community data, and deliver personalized moral compass insights.
+
+        Modern Tech Stack: Utilized cutting-edge technologies including Convex for backend/database management, TanStack Query for advanced caching and synchronization, and reactive programming patterns for real-time user experience.
+
+AI Content Creation Suite (React, Python, C++)
+
+    Architected and Developed a multi-component AI-powered video content creation platform, significantly streamlining the production workflow.
+
+        Web Client: Engineered an intuitive React-based web application enabling users to perform AI-assisted text generation, speech synthesis, video processing, and automated subtitle creation.
+
+        Backend API (WhisperX Server): Built a high-performance Python backend delivering advanced audio and video processing, including precise transcription, versatile text-to-speech, and voice conversion functionalities.
+
+        Offline Video Renderer: Implemented a C++ and Live2D Cubism SDK solution for pre-rendering high-quality animations of Live2D models, enabling seamless integration into video projects.
+
+# education
+
+Coding Temple software engineering https://www.credly.com/badges/2cb16330-a5d6-41b4-8cda-a1e177287f35/public_url april 2023
+    
+```
+
+`go.mod`:
+
+```mod
+module resume-builder
+
+go 1.25.3
+
+require github.com/johnfercher/maroto/v2 v2.3.1
+
+require (
+	github.com/boombuler/barcode v1.0.1 // indirect
+	github.com/f-amaral/go-async v0.3.0 // indirect
+	github.com/google/uuid v1.5.0 // indirect
+	github.com/hhrutter/lzw v1.0.0 // indirect
+	github.com/hhrutter/tiff v1.0.1 // indirect
+	github.com/johnfercher/go-tree v1.0.5 // indirect
+	github.com/jung-kurt/gofpdf v1.16.2 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/pdfcpu/pdfcpu v0.6.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/rivo/uniseg v0.4.4 // indirect
+	golang.org/x/image v0.18.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+)
+
+```
+
+`go.sum`:
+
+```sum
+github.com/boombuler/barcode v1.0.0/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
+github.com/boombuler/barcode v1.0.1 h1:NDBbPmhS+EqABEs5Kg3n/5ZNjy73Pz7SIV+KCeqyXcs=
+github.com/boombuler/barcode v1.0.1/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/f-amaral/go-async v0.3.0 h1:h4kLsX7aKfdWaHvV0lf+/EE3OIeCzyeDYJDb/vDZUyg=
+github.com/f-amaral/go-async v0.3.0/go.mod h1:Hz5Qr6DAWpbTTUjytnrg1WIsDgS7NtOei5y8SipYS7U=
+github.com/google/uuid v1.5.0 h1:1p67kYwdtXjb0gL0BPiP1Av9wiZPo5A8z2cWkTZ+eyU=
+github.com/google/uuid v1.5.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/hhrutter/lzw v1.0.0 h1:laL89Llp86W3rRs83LvKbwYRx6INE8gDn0XNb1oXtm0=
+github.com/hhrutter/lzw v1.0.0/go.mod h1:2HC6DJSn/n6iAZfgM3Pg+cP1KxeWc3ezG8bBqW5+WEo=
+github.com/hhrutter/tiff v1.0.1 h1:MIus8caHU5U6823gx7C6jrfoEvfSTGtEFRiM8/LOzC0=
+github.com/hhrutter/tiff v1.0.1/go.mod h1:zU/dNgDm0cMIa8y8YwcYBeuEEveI4B0owqHyiPpJPHc=
+github.com/johnfercher/go-tree v1.0.5 h1:zpgVhJsChavzhKdxhQiCJJzcSY3VCT9oal2JoA2ZevY=
+github.com/johnfercher/go-tree v1.0.5/go.mod h1:DUO6QkXIFh1K7jeGBIkLCZaeUgnkdQAsB64FDSoHswg=
+github.com/johnfercher/maroto/v2 v2.3.1 h1:sgODsgDEMQFn0ZxCQY0Kme9c1wVGFivL4BPK63m1Ulk=
+github.com/johnfercher/maroto/v2 v2.3.1/go.mod h1:/LfW6AQGZzsG6xUixcfyxkKztDoszdwC+G2jNRl8bss=
+github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
+github.com/jung-kurt/gofpdf v1.16.2 h1:jgbatWHfRlPYiK85qgevsZTHviWXKwB1TTiKdz5PtRc=
+github.com/jung-kurt/gofpdf v1.16.2/go.mod h1:1hl7y57EsiPAkLbOwzpzqgx1A30nQCk/YmFV8S2vmK0=
+github.com/mattn/go-runewidth v0.0.15 h1:UNAjwbU9l54TA3KzvqLGxwWjHmMgBUVhBiTjelZgg3U=
+github.com/mattn/go-runewidth v0.0.15/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
+github.com/pdfcpu/pdfcpu v0.6.0 h1:z4kARP5bcWa39TTYMcN/kjBnm7MvhTWjXgeYmkdAGMI=
+github.com/pdfcpu/pdfcpu v0.6.0/go.mod h1:kmpD0rk8YnZj0l3qSeGBlAB+XszHUgNv//ORH/E7EYo=
+github.com/phpdave11/gofpdi v1.0.7/go.mod h1:vBmVV0Do6hSBHC8uKUQ71JGW+ZGQq74llk/7bXwjDoI=
+github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
+github.com/rivo/uniseg v0.4.4 h1:8TfxU8dW6PdqD27gjM8MVNuicgxIjxpm4K7x4jp8sis=
+github.com/rivo/uniseg v0.4.4/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
+github.com/ruudk/golang-pdf417 v0.0.0-20181029194003-1af4ab5afa58/go.mod h1:6lfFZQK844Gfx8o5WFuvpxWRwnSoipWe/p622j1v06w=
+github.com/stretchr/objx v0.5.1 h1:4VhoImhV/Bm0ToFkXFi8hXNXwpDRZ/ynw3amt82mzq0=
+github.com/stretchr/objx v0.5.1/go.mod h1:/iHQpkQwBD6DLUmQ4pE+s1TXdob1mORJ4/UFdrifcy0=
+github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
+github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
+github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
+golang.org/x/image v0.0.0-20190910094157-69e4b8554b2a/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
+golang.org/x/image v0.18.0 h1:jGzIakQa/ZXI1I0Fxvaa9W7yP25TqT6cHIHn+6CqvSQ=
+golang.org/x/image v0.18.0/go.mod h1:4yyo5vMFQjVjUcVk4jEQcU9MGy/rulF5WvUILseCM2E=
+golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
+golang.org/x/text v0.16.0 h1:a94ExnEXNtEwYLGJSIUxnWoxoRz/ZcCsV63ROupILh4=
+golang.org/x/text v0.16.0/go.mod h1:GhwF1Be+LQoKShO3cGOHzqOgRrGaYc9AvblQOmPVHnI=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
+gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+
+```
+
+`main.go`:
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"github.com/johnfercher/maroto/v2"
+	"github.com/johnfercher/maroto/v2/pkg/components/col"
+	marotoimg "github.com/johnfercher/maroto/v2/pkg/components/image"
+	"github.com/johnfercher/maroto/v2/pkg/components/text"
+	"github.com/johnfercher/maroto/v2/pkg/consts/align"
+	"github.com/johnfercher/maroto/v2/pkg/consts/fontstyle"
+	"github.com/johnfercher/maroto/v2/pkg/config"
+	"github.com/johnfercher/maroto/v2/pkg/core"
+	"github.com/johnfercher/maroto/v2/pkg/props"
+	"github.com/johnfercher/maroto/v2/pkg/repository"
+)
+
+type Link struct {
+	Text string `json:"text"`
+	URL  string `json:"url"`
+}
+
+type Achievement struct {
+	Text     string `json:"text"`
+	Overflow bool   `json:"overflow,omitempty"`
+}
+
+type Contact struct {
+	Location string `json:"location"`
+	Phone    string `json:"phone"`
+	Email    string `json:"email"`
+	Website  Link   `json:"website"`
+	LinkedIn Link   `json:"linkedin"`
+	GitHub   Link   `json:"github"`
+}
+
+type Skill struct {
+	Category string `json:"category"`
+	Items    string `json:"items"`
+	Overflow bool   `json:"overflow,omitempty"`
+}
+
+type Experience struct {
+	Company      string        `json:"company"`
+	Title        string        `json:"title"`
+	URL          string        `json:"url"`
+	Dates        string        `json:"dates"`
+	Achievements []Achievement `json:"achievements"`
+	Tech         string        `json:"tech"`
+}
+
+type Project struct {
+	Name         string        `json:"name"`
+	URL          string        `json:"url"`
+	Achievements []Achievement `json:"achievements"`
+	Tech         string        `json:"tech"`
+}
+
+type Education struct {
+	School string `json:"school"`
+	Degree string `json:"degree"`
+	URL    string `json:"url"`
+	Date   string `json:"date"`
+}
+
+type Resume struct {
+	Name       string       `json:"name"`
+	Title      string       `json:"title"`
+	Contact    Contact      `json:"contact"`
+	Summary    string       `json:"summary"`
+	Skills     []Skill      `json:"skills"`
+	Experience []Experience `json:"experience"`
+	Projects   []Project    `json:"projects"`
+	Education  []Education  `json:"education"`
+}
+
+func loadResume(filename string) (*Resume, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read resume file: %w", err)
+	}
+
+	var resume Resume
+	if err := json.Unmarshal(data, &resume); err != nil {
+		return nil, fmt.Errorf("failed to parse resume JSON: %w", err)
+	}
+
+	return &resume, nil
+}
+
+func main() {
+	start := time.Now()
+	fmt.Println("Starting resume generation...")
+
+	resume, err := loadResume("resume.json")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	m := getMaroto(resume)
+	document, err := m.Generate()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	err = document.Save("resume.pdf")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	duration := time.Since(start)
+	fmt.Printf("Resume generated successfully in %v\n", duration)
+}
+
+func getMaroto(resume *Resume) core.Maroto {
+	// Load custom fonts
+	customFonts, err := repository.New().
+		AddUTF8Font("dejavu", fontstyle.Normal, "fonts/DejaVuSans.ttf").
+		AddUTF8Font("dejavu", fontstyle.Bold, "fonts/DejaVuSans-Bold.ttf").
+		AddUTF8Font("dejavu", fontstyle.Italic, "fonts/DejaVuSans-Oblique.ttf").
+		AddUTF8Font("dejavu", fontstyle.BoldItalic, "fonts/DejaVuSans-BoldOblique.ttf").
+		AddUTF8Font("dejavu-light", fontstyle.Normal, "fonts/DejaVuSans-ExtraLight.ttf").
+		Load()
+	if err != nil {
+		log.Printf("Warning: Failed to load custom fonts: %v", err)
+		// Fallback to default config
+		cfg := config.NewBuilder().
+			WithPageNumber().
+			WithLeftMargin(10).
+			WithTopMargin(10).
+			WithRightMargin(10).
+			Build()
+		return maroto.New(cfg)
+	}
+
+	cfg := config.NewBuilder().
+		WithCustomFonts(customFonts).
+		WithDefaultFont(&props.Font{Family: "dejavu"}).
+		WithPageNumber().
+		WithLeftMargin(10).
+		WithTopMargin(10).
+		WithRightMargin(10).
+		Build()
+
+	mrt := maroto.New(cfg)
+
+	// Header with name and title
+	mrt.AddRows(text.NewRow(15, resume.Name, props.Text{
+		Top:   3,
+		Style: fontstyle.Bold,
+		Size:  20,
+		Align: align.Left,
+	}))
+
+
+	// Contact info in 2x3 grid with icons
+	mrt.AddRow(8,
+		marotoimg.NewFromFileCol(1, "icons-png/map-pin.png", props.Rect{
+			Center:  false,
+			Percent: 60,
+			Top: 1,
+			Left: 10,
+		}),
+		text.NewCol(3, resume.Contact.Location, props.Text{
+			Size:  10,
+			Align: align.Left,
+			Top:   1,
+		}),
+		marotoimg.NewFromFileCol(1, "icons-png/phone.png", props.Rect{
+			Center:  false,
+			Percent: 60,
+			Top: 1,
+			Left: 10,
+		}),
+		text.NewCol(3, resume.Contact.Phone, props.Text{
+			Size:  10,
+			Align: align.Left,
+			Top:   1,
+		}),
+		marotoimg.NewFromFileCol(1, "icons-png/mail.png", props.Rect{
+			Center:  false,
+			Percent: 60,
+			Top: 1,
+			Left: 10,
+		}),
+		text.NewCol(3, resume.Contact.Email, props.Text{
+			Size:  10,
+			Align: align.Left,
+			Top:   1,
+		}),
+	)
+	mrt.AddRow(8,
+		marotoimg.NewFromFileCol(1, "icons-png/link.png", props.Rect{
+			Center:  false,
+			Percent: 60,
+			Top: 1,
+			Left: 10,
+		}),
+		text.NewCol(3, resume.Contact.Website.Text, props.Text{
+			Size:  10,
+			Align: align.Left,
+			Top:   1,
+			Hyperlink: &[]string{resume.Contact.Website.URL}[0],
+			Color: &props.Color{Red: 0, Green: 0, Blue: 255},
+			Style: fontstyle.BoldItalic,
+		}),
+		marotoimg.NewFromFileCol(1, "icons-png/linkedin.png", props.Rect{
+			Center:  false,
+			Percent: 60,
+			Top: 1,
+			Left: 10,
+		}),
+		text.NewCol(3, resume.Contact.LinkedIn.Text, props.Text{
+			Size:  10,
+			Align: align.Left,
+			Top:   1,
+			Hyperlink: &[]string{resume.Contact.LinkedIn.URL}[0],
+			Color: &props.Color{Red: 0, Green: 0, Blue: 255},
+			Style: fontstyle.BoldItalic,
+		}),
+		marotoimg.NewFromFileCol(1, "icons-png/github.png", props.Rect{
+			Center:  false,
+			Percent: 60,
+			Top: 1,
+			Left: 10,
+		}),
+		text.NewCol(3, resume.Contact.GitHub.Text, props.Text{
+			Size:  10,
+			Align: align.Left,
+			Top:   1,
+			Hyperlink: &[]string{resume.Contact.GitHub.URL}[0],
+			Color: &props.Color{Red: 0, Green: 0, Blue: 255},
+			Style: fontstyle.BoldItalic,
+		}),
+	)
+
+	// Separator line
+	mrt.AddRow(.25, col.New(1)).WithStyle(&props.Cell{BackgroundColor: getPrimaryColor()})
+
+	// Full Stack Developer title
+	mrt.AddRows(text.NewRow(10, resume.Title, props.Text{
+		Top:    3,
+		Style:  fontstyle.Bold,
+		Size:   14,
+		Align:  align.Left,
+		Family: "dejavu",
+	}))
+
+	mrt.AddRows(text.NewRow(15, resume.Summary, props.Text{
+		Top:    2,
+		Size:   10,
+		Align:  align.Left,
+		Family: "dejavu-light",
+	}))
+
+	// Add spacing after summary
+	mrt.AddRow(5, col.New(1))
+
+	// Technical Skills
+	mrt.AddRow(10,
+		marotoimg.NewFromFileCol(0, "icons-png/box.png", props.Rect{
+			Center:  false,
+			Percent: 80,
+			Left: 0,
+		}),
+		text.NewCol(12, "TECHNICAL SKILLS", props.Text{
+			Top:   3,
+			Style: fontstyle.Bold,
+			Size:  12,
+			Align: align.Left,
+			Color: getPrimaryColor(),
+			Left:  10,
+		}),
+	)
+
+	// Technical Skills underline
+	mrt.AddRow(.25, col.New(1)).WithStyle(&props.Cell{BackgroundColor: getPrimaryColor()})
+
+	// Add each skill category dynamically
+	for _, skill := range resume.Skills {
+		skillRowHeight := 6
+		if skill.Overflow {
+			skillRowHeight = 8
+		}
+		mrt.AddRow(float64(skillRowHeight),
+			text.NewCol(3, skill.Category + ":", props.Text{
+				Size:  10,
+				Style: fontstyle.Bold,
+				Align: align.Left,
+			}),
+			text.NewCol(9, skill.Items, props.Text{
+				Size:  10,
+				Align: align.Left,
+			}),
+		)
+	}
+
+	// Work Experience
+	mrt.AddRow(10,
+		marotoimg.NewFromFileCol(0, "icons-png/building-2.png", props.Rect{
+			Center:  false,
+			Percent: 80,
+			Left: 0,
+		}),
+		text.NewCol(12, "WORK EXPERIENCE", props.Text{
+			Top:   3,
+			Style: fontstyle.Bold,
+			Size:  12,
+			Align: align.Left,
+			Color: getPrimaryColor(),
+			Left:  10,
+		}),
+	)
+
+	// underline
+	mrt.AddRow(.25, col.New(1)).WithStyle(&props.Cell{BackgroundColor: getPrimaryColor()})
+
+	for _, exp := range resume.Experience {
+		jobTitle := exp.Title + " - " + exp.Company
+		if exp.URL != "" {
+			mrt.AddRow(8,
+				text.NewCol(8, jobTitle, props.Text{
+					Size:      11,
+					Style:     fontstyle.BoldItalic,
+					Align:     align.Left,
+					Color:     &props.Color{Red: 0, Green: 0, Blue: 255},
+					Hyperlink: &[]string{exp.URL}[0],
+				}),
+				text.NewCol(4, exp.Dates, props.Text{
+					Size:  10,
+					Align: align.Right,
+				}),
+			)
+		} else {
+			mrt.AddRow(8,
+				text.NewCol(8, jobTitle, props.Text{
+					Size:  11,
+					Style: fontstyle.Bold,
+					Align: align.Left,
+				}),
+				text.NewCol(4, exp.Dates, props.Text{
+					Size:  10,
+					Align: align.Right,
+				}),
+			)
+		}
+
+		// Achievements
+		for _, achievement := range exp.Achievements {
+			rowHeight := 5
+			if achievement.Overflow {
+				rowHeight = 7
+			}
+			mrt.AddRows(text.NewRow(float64(rowHeight), "• "+achievement.Text, props.Text{
+				Size:  9,
+				Align: align.Left,
+			}))
+		}
+
+		// Tech stack
+		mrt.AddRows(text.NewRow(5, "Tech: "+exp.Tech, props.Text{
+			Size:  9,
+			Align: align.Left,
+			Style: fontstyle.Italic,
+		}))
+	}
+
+	// Projects
+	mrt.AddRow(10,
+		marotoimg.NewFromFileCol(0, "icons-png/layers.png", props.Rect{
+			Center:  false,
+			Percent: 80,
+			Left: 0,
+		}),
+		text.NewCol(12, "PROJECTS", props.Text{
+			Top:   3,
+			Style: fontstyle.Bold,
+			Size:  12,
+			Align: align.Left,
+			Color: getPrimaryColor(),
+			Left:  10,
+		}),
+	)
+
+	// Projects underline
+	mrt.AddRow(.25, col.New(1)).WithStyle(&props.Cell{BackgroundColor: getPrimaryColor()})
+
+	// Add each project dynamically
+	for _, proj := range resume.Projects {
+		// Project name with link
+		if proj.URL != "" {
+			mrt.AddRow(8,
+				text.NewCol(12, proj.Name, props.Text{
+					Size:      11,
+					Style:     fontstyle.BoldItalic,
+					Align:     align.Left,
+					Color:     &props.Color{Red: 0, Green: 0, Blue: 255},
+					Hyperlink: &[]string{proj.URL}[0],
+				}),
+			)
+		} else {
+			mrt.AddRow(8,
+				text.NewCol(12, proj.Name, props.Text{
+					Size:  11,
+					Style: fontstyle.Bold,
+					Align: align.Left,
+				}),
+			)
+		}
+
+		// Achievements
+		for _, achievement := range proj.Achievements {
+			rowHeight := 6
+			if achievement.Overflow {
+				rowHeight = 8
+			}
+			mrt.AddRows(text.NewRow(float64(rowHeight), "• "+achievement.Text, props.Text{
+				Size:  9,
+				Align: align.Left,
+			}))
+		}
+
+		// Tech stack
+		mrt.AddRows(text.NewRow(5, "Tech: "+proj.Tech, props.Text{
+			Size:  9,
+			Align: align.Left,
+			Style: fontstyle.Italic,
+		}))
+	}
+
+	
+
+	// Education
+	mrt.AddRow(10,
+		marotoimg.NewFromFileCol(0, "icons-png/graduation-cap.png", props.Rect{
+			Center:  false,
+			Percent: 80,
+			Left: 0,
+		}),
+		text.NewCol(12, "EDUCATION", props.Text{
+			Top:   3,
+			Style: fontstyle.Bold,
+			Size:  12,
+			Align: align.Left,
+			Color: getPrimaryColor(),
+			Left:  10,
+		}),
+	)
+
+	// Education underline
+	mrt.AddRow(.25, col.New(1)).WithStyle(&props.Cell{BackgroundColor: getPrimaryColor()})
+
+	// Add each education entry dynamically
+	for _, edu := range resume.Education {
+		if edu.URL != "" {
+			mrt.AddRow(8,
+				text.NewCol(8, edu.School, props.Text{
+					Size:      11,
+					Style:     fontstyle.BoldItalic,
+					Align:     align.Left,
+					Color:     &props.Color{Red: 0, Green: 0, Blue: 255},
+					Hyperlink: &[]string{edu.URL}[0],
+				}),
+				text.NewCol(4, edu.Date, props.Text{
+					Size:  10,
+					Align: align.Right,
+				}),
+			)
+		} else {
+			mrt.AddRow(8,
+				text.NewCol(8, edu.School, props.Text{
+					Size:  11,
+					Style: fontstyle.Bold,
+					Align: align.Left,
+				}),
+				text.NewCol(4, edu.Date, props.Text{
+					Size:  10,
+					Align: align.Right,
+				}),
+			)
+		}
+	}
+
+	return mrt
+}
+
+func getPrimaryColor() *props.Color {
+	return &props.Color{
+		Red:   70,
+		Green: 130,
+		Blue:  180,
+	}
+}
+
+
+```
+
+`resume.json`:
+
+```json
+{
+  "name": "Luke Stogsdill",
+  "title": "Full Stack Developer",
+  "contact": {
+    "location": "Houston, TX 77064",
+    "phone": "(832) 392-2613",
+    "email": "lukestogsdill@gmail.com",
+    "website": {
+      "text": "lustogs.com",
+      "url": "https://lustogs.com"
+    },
+    "linkedin": {
+      "text": "luke-stogsdill",
+      "url": "https://linkedin.com/in/luke-stogsdill"
+    },
+    "github": {
+      "text": "lukestogsdill",
+      "url": "https://github.com/lukestogsdill"
+    }
+  },
+  "summary": "Full Stack Developer with 2+ years of experience building high-performance web apps and practical backend systems. Strong focus on clean architecture, fast load times, and turning rough concepts into polished, production-quality products.",
+  "skills": [
+    {
+      "category": "Frontend",
+      "items": "React, Next.js, Svelte5, TanStack Query, TypeScript"
+    },
+    {
+      "category": "Backend",
+      "items": "Node.js, Golang, Python, C++, oRPC, Convex"
+    },
+    {
+      "category": "Databases",
+      "items": "MongoDB, PostgreSQL, MySQL, SveltiaCS"
+    },
+    {
+      "category": "DevOps",
+      "items": "Docker, CI/CD, Cloudflare, Hetzner, Git"
+    }
+  ],
+  "experience": [
+    {
+      "company": "Lobby Media | Web Design",
+      "title": "Co-Founder",
+      "url": "https://lobby.media",
+      "dates": "June 2024 - Current",
+      "achievements": [
+        {
+          "text": "Delivered lightweight, SEO-optimized static sites achieving perfect PageSpeed scores"
+        },
+        {
+          "text": "Improved client sites with faster load times, modern UI, and clearer information flow"
+        },
+        {
+          "text": "Implemented CMS editing so clients can manage content without developer involvement"
+        },
+        {
+          "text": "Shipped production websites and polished demos across medical, service, and event niches"
+        }
+      ],
+      "tech": "Svelte5, Next.js, TypeScript, SveltiaCS, Cloudflare"
+    },
+    {
+      "company": "Freelance Software Consultant",
+      "title": "Contract Developer",
+      "url": "",
+      "dates": "December 2023 - June 2024",
+      "achievements": [
+        {
+          "text": "Engineered a microservice for IoT devices that processed and updated alert states as new events entered PostgreSQL",
+          "overflow": true
+        },
+        {
+          "text": "Implemented a PostgreSQL listen/notify workflow with caching to reduce repeated queries and improve responsiveness",
+          "overflow": true
+        },
+        {
+          "text": "Built an operator dashboard to review alert history and monitor device status from a unified interface"
+        }
+      ],
+      "tech": "Next.js, Golang, PostgreSQL, MongoDB, Docker, Hetzner Cloud"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Sibyl - Daily Morality Quiz",
+      "url": "https://sibyl.it.com",
+      "achievements": [
+        {
+          "text": "Developed a daily quiz platform with smooth response tracking and user comparison features"
+        },
+        {
+          "text": "Added AI-driven insight generation to highlight behavioral patterns"
+        },
+        {
+          "text": "Implemented the full frontend, backend, and reactive data flow"
+        }
+      ],
+      "tech": "React, TypeScript, Convex, TanStack Query, oRPC"
+    },
+    {
+      "name": "AI VTuber Content Creator",
+      "url": "https://youtu.be/ZUWlEnA5C_4?si=fc-Co2MHDkzZdpth",
+      "achievements": [
+        {
+          "text": "Architected an automated pipeline that parses video frames and WhisperX transcripts to extract context and timing"
+        },
+        {
+          "text": "Generated LLM-driven character reactions with synthesized speech aligned to motion data from a Live2D model"
+        },
+        {
+          "text": "Automated final production by compositing the character, synced audio, and subtitles onto the original footage"
+        }
+      ],
+      "tech": "React, Python, C++, Live2D Cubism SDK, WhisperX, OpenAI API"
+    }
+  ],
+  "education": [
+    {
+      "school": "Coding Temple - Software Engineering",
+      "degree": "",
+      "url": "https://www.credly.com/badges/2cb16330-a5d6-41b4-8cda-a1e177287f35/public_url",
+      "date": "April 2023"
+    }
+  ]
+}
+```
