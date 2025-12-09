@@ -1,2 +1,6 @@
 .env
 *.pem
+generated/
+*.pdf
+resume-context.txt
+job-description.txt

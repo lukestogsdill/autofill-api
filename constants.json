@@ -1,0 +1,19 @@
+{
+  "first_name": "Luke",
+  "last_name": "Stogsdill",
+  "email": "lukestogsdill@gmail.com",
+  "phone": "(832) 392-2613",
+  "location": "Houston, TX 77064",
+  "city": "Houston",
+  "state": "TX",
+  "zip": "77064",
+  "country": "United States",
+  "linkedin_url": "https://linkedin.com/in/luke-stogsdill",
+  "github_url": "https://github.com/lukestogsdill",
+  "website_url": "https://lustogs.com",
+  "years_experience": "2",
+  "willing_to_relocate": "yes",
+  "require_sponsorship": "no",
+  "authorized_to_work": "yes",
+  "over_18": "yes"
+}

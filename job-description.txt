@@ -1,34 +1,36 @@
-About the job
-About Co-Intelligence Labs
-We're a well-funded AI startup in stealth mode building intelligent platforms that transform healthcare decision-making. Our mission is to make complex healthcare navigation effortless through AI-powered recommendations and conversational interfaces that are secure, scalable, and accessible to everyone.
+Seeking a web developer who specializes in WordPress, search engine marketing, and Google Analytics to build, optimize, and maintain high-performing websites that drive measurable results. This role blends hands-on development with data-driven marketing and performance analysis.
 
-About the Role
-As a Junior Fullstack Engineer, you'll contribute to our next-generation healthcare recommendation platform while learning from experienced engineers. You'll work across the technology stack, from frontend interfaces to backend services, while gaining exposure to cutting-edge AI integrations. This is an excellent opportunity to grow your skills in a modern tech environment.
-You'll work with technologies like Next.js, React Native, NestJS, and AI services while collaborating closely with senior engineers, designers, and product teams. We'll provide mentorship and guidance as you contribute to features that help users navigate healthcare decisions through AI-powered conversations.
-Location: Austin, TX (relocation assistance provided)
+Key Responsibilities
 
-In this role, you will:
-• Contribute to fullstack development across web (Next.js/React + Tailwind), mobile (React Native/Expo), and backend (NestJS) with guidance from senior engineers
-• Learn AI integration by working on conversational user experiences and helping implement AI features across our platform
-• Build basic data components
-• Support deployment processes on AWS and learn about CI/CD pipelines, environment management, and production systems
-• Develop API endpoints for features like messaging and user management while learning best practices for error handling and testing
-• Collaborate with the team to understand product requirements, participate in code reviews, and contribute to technical discussions
-• Learn through real projects by working on user-facing features while receiving feedback and guidance on code quality and architecture
-You might thrive in this role if you:
-• Have foundational programming skills with experience in JavaScript/TypeScript, React, and basic backend development (internships, projects, or coursework count!)
-• Are eager to learn AI technologies and interested in understanding how AI can solve real-world problems
-• Know some of our tech stack - familiarity with React, Node.js, databases, or similar technologies (we'll teach you the specifics)
-• Have built projects during school, internships, or personal time - web apps, mobile apps, or full-stack projects demonstrate your interest in development
-• Are curious and collaborative - you ask questions, seek feedback, and enjoy working with others to solve problems
-• Care about making an impact in healthcare and want to build technology that helps people make better decisions
-• Communicate well and can explain your code and thought process to teammates, even when you're still learning
-• Are excited about growth - you want to develop your skills rapidly in a mentorship-rich environment
-• Enjoy playing with new technologies - we’re all pushing the envelope with how we develop products and we expect you to do the same
+Develop, build, and maintain responsive WordPress websites using themes, page builders, and custom code (HTML, CSS, basic PHP/JavaScript as needed). Web design is a bonus!
+Implement and update plugins, ensure site security, performance, and compatibility, and troubleshoot technical issues.
+Optimize site structure, speed, and UX for SEO and conversions (landing pages, forms, funnels).
+Plan and manage search engine marketing campaigns (primarily Google Ads), including keyword research, ad creation, bid management, and ongoing optimization.
+Prefer Google knowledge to set up and maintain Google Analytics (preferably GA4), Google Tag Manager, and conversion tracking for web and campaign performance.
+Monitor key metrics (traffic, engagement, conversions, cost per lead, etc.) and produce clear reports with actionable recommendations.
+Collaborate with content, design, and marketing teams to support campaigns, launches, and A/B testing.
+Stay current on WordPress updates, SEO best practices, SEM trends, and analytics changes to continually improve performance.
+Qualifications
 
-About the Company
-Co-Intelligence Labs is an equal opportunity employer dedicated to using AI to solve pressing human challenges, starting with healthcare navigation. We're committed to building AI systems that prioritize safety, user empowerment, and diverse perspectives to benefit society broadly.
-We believe in investing in new talent and providing mentorship opportunities for junior engineers to grow their careers in AI and healthcare technology.
-We pay above market for startups and offer generous equity compensation.
-Questions? Contact jobs@cointelligencelabs.com
+Proven experience developing and managing WordPress websites (portfolio or live site examples required).
+Strong understanding of SEO fundamentals (on-page, technical, and basic off-page).
+Hands-on experience with Google Analytics (GA4), Google Tag Manager, and Google Search Console.
+Experience managing and optimizing Google Ads or other paid search campaigns.
+Proficiency in HTML, CSS, and basic PHP/JavaScript for customizing WordPress sites.
+Ability to interpret data and translate insights into clear recommendations and next steps.
+Strong problem-solving skills, attention to detail, and ability to manage multiple projects and deadlines.
+Nice-to-Have
 
+Experience with landing page optimization and A/B testing tools.
+Familiarity with other analytics or marketing platforms (e.g., Meta Ads, LinkedIn Ads, HubSpot, Mailchimp).
+Basic design skills (Canva, Figma, or Adobe tools) for minor visual updates and assets.
+Job Types: Part-time, Contract
+
+Pay: $28.00 - $38.00 per hour
+
+Expected hours: 10 – 20 per week
+
+Benefits:
+
+Flexible schedule
+Work Location: Remote

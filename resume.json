@@ -1,0 +1,125 @@
+{
+  "name": "Luke Stogsdill",
+  "title": "Full Stack Developer",
+  "contact": {
+    "location": "Houston, TX 77064",
+    "phone": "(832) 392-2613",
+    "email": "lukestogsdill@gmail.com",
+    "website": {
+      "text": "lustogs.com",
+      "url": "https://lustogs.com"
+    },
+    "linkedin": {
+      "text": "luke-stogsdill",
+      "url": "https://linkedin.com/in/luke-stogsdill"
+    },
+    "github": {
+      "text": "lukestogsdill",
+      "url": "https://github.com/lukestogsdill"
+    }
+  },
+  "summary": "Full Stack Developer with 2+ years of experience building high-performance web apps and practical backend systems. Strong focus on clean architecture, fast load times, and turning rough concepts into polished, production-quality products.",
+  "skills": [
+    {
+      "category": "Frontend",
+      "items": "React, Next.js, Svelte5, TanStack Query, TypeScript"
+    },
+    {
+      "category": "Backend",
+      "items": "Node.js, Golang, Python, C++, oRPC, Convex"
+    },
+    {
+      "category": "Databases",
+      "items": "MongoDB, PostgreSQL, MySQL, SveltiaCS"
+    },
+    {
+      "category": "DevOps",
+      "items": "Docker, CI/CD, Cloudflare, Hetzner, Git"
+    }
+  ],
+  "experience": [
+    {
+      "company": "Lobby Media | Web Design",
+      "title": "Co-Founder",
+      "url": "https://lobby.media",
+      "dates": "June 2024 - Current",
+      "achievements": [
+        {
+          "text": "Delivered lightweight, SEO-optimized static sites achieving perfect PageSpeed scores"
+        },
+        {
+          "text": "Improved client sites with faster load times, modern UI, and clearer information flow"
+        },
+        {
+          "text": "Implemented CMS editing so clients can manage content without developer involvement"
+        },
+        {
+          "text": "Shipped production websites and polished demos across medical, service, and event niches"
+        }
+      ],
+      "tech": "Svelte5, Next.js, TypeScript, SveltiaCS, Cloudflare"
+    },
+    {
+      "company": "Freelance Software Consultant",
+      "title": "Contract Developer",
+      "url": "",
+      "dates": "December 2023 - June 2024",
+      "achievements": [
+        {
+          "text": "Engineered a microservice for IoT devices that processed and updated alert states as new events entered PostgreSQL",
+          "overflow": true
+        },
+        {
+          "text": "Implemented a PostgreSQL listen/notify workflow with caching to reduce repeated queries and improve responsiveness",
+          "overflow": true
+        },
+        {
+          "text": "Built an operator dashboard to review alert history and monitor device status from a unified interface"
+        }
+      ],
+      "tech": "Next.js, Golang, PostgreSQL, MongoDB, Docker, Hetzner Cloud"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Sibyl - Daily Morality Quiz",
+      "url": "https://sibyl.it.com",
+      "achievements": [
+        {
+          "text": "Developed a daily quiz platform with smooth response tracking and user comparison features"
+        },
+        {
+          "text": "Added AI-driven insight generation to highlight behavioral patterns"
+        },
+        {
+          "text": "Implemented the full frontend, backend, and reactive data flow"
+        }
+      ],
+      "tech": "React, TypeScript, Convex, TanStack Query, oRPC"
+    },
+    {
+      "name": "AI VTuber Content Creator",
+      "url": "https://youtu.be/ZUWlEnA5C_4?si=fc-Co2MHDkzZdpth",
+      "achievements": [
+        {
+          "text": "Architected an automated pipeline that parses video frames and WhisperX transcripts to extract context and timing"
+        },
+        {
+          "text": "Generated LLM-driven character reactions with synthesized speech aligned to motion data from a Live2D model"
+        },
+        {
+          "text": "Automated final production by compositing the character, synced audio, and subtitles onto the original footage"
+        }
+      ],
+      "tech": "React, Python, C++, Live2D Cubism SDK, WhisperX, OpenAI API"
+    }
+  ],
+  "education": [
+    {
+      "school": "Coding Temple - Software Engineering",
+      "degree": "",
+      "url": "https://www.credly.com/badges/2cb16330-a5d6-41b4-8cda-a1e177287f35/public_url",
+      "date": "April 2023"
+    }
+  ]
+}
