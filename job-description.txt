@@ -1,36 +1,52 @@
-Seeking a web developer who specializes in WordPress, search engine marketing, and Google Analytics to build, optimize, and maintain high-performing websites that drive measurable results. This role blends hands-on development with data-driven marketing and performance analysis.
+Loomis
+developer
 
-Key Responsibilities
+Full job description
+With a network of nearly 200 branches, Loomis armored transportation, cash management centers, and cash inventory vaults keep cash flowing throughout financial institutions and retail businesses across the US. Loomis prides itself on providing employees with opportunities for career advancement and job satisfaction. In fact, many of our company’s managers, vice presidents, and corporate executives started out in the branches as driver/guards and tellers. Our work can be challenging, but the thousands who have stayed with our company for decades will tell you that if you have the desire to learn and the drive to succeed, Loomis is the place to be. Come join our team!
 
-Develop, build, and maintain responsive WordPress websites using themes, page builders, and custom code (HTML, CSS, basic PHP/JavaScript as needed). Web design is a bonus!
-Implement and update plugins, ensure site security, performance, and compatibility, and troubleshoot technical issues.
-Optimize site structure, speed, and UX for SEO and conversions (landing pages, forms, funnels).
-Plan and manage search engine marketing campaigns (primarily Google Ads), including keyword research, ad creation, bid management, and ongoing optimization.
-Prefer Google knowledge to set up and maintain Google Analytics (preferably GA4), Google Tag Manager, and conversion tracking for web and campaign performance.
-Monitor key metrics (traffic, engagement, conversions, cost per lead, etc.) and produce clear reports with actionable recommendations.
-Collaborate with content, design, and marketing teams to support campaigns, launches, and A/B testing.
-Stay current on WordPress updates, SEO best practices, SEM trends, and analytics changes to continually improve performance.
-Qualifications
+Job Overview: The Developer position will be responsible for the management, development, and upkeep of many of Loomis’ custom-developed, internal, business-facing, and customer-focused applications. This position will also rely on your current technical and architectural knowledge to develop and update applications with current techniques, technologies, and tools. Enterprise SDLC within a formal project process is critical in this role, as is your ability to document solutions and work within a development team.
 
-Proven experience developing and managing WordPress websites (portfolio or live site examples required).
-Strong understanding of SEO fundamentals (on-page, technical, and basic off-page).
-Hands-on experience with Google Analytics (GA4), Google Tag Manager, and Google Search Console.
-Experience managing and optimizing Google Ads or other paid search campaigns.
-Proficiency in HTML, CSS, and basic PHP/JavaScript for customizing WordPress sites.
-Ability to interpret data and translate insights into clear recommendations and next steps.
-Strong problem-solving skills, attention to detail, and ability to manage multiple projects and deadlines.
-Nice-to-Have
-
-Experience with landing page optimization and A/B testing tools.
-Familiarity with other analytics or marketing platforms (e.g., Meta Ads, LinkedIn Ads, HubSpot, Mailchimp).
-Basic design skills (Canva, Figma, or Adobe tools) for minor visual updates and assets.
-Job Types: Part-time, Contract
-
-Pay: $28.00 - $38.00 per hour
-
-Expected hours: 10 – 20 per week
-
+Key Responsibilities:
+Provide ongoing support and maintenance for existing software applications.
+Design, develop, and maintain high-quality software applications and databases using industry-standard technology and best practices.
+Write clean, maintainable, and efficient code in various programming languages (e.g., Python, Java, JavaScript, etc.).
+Create integration solutions to connect various software systems and databases.
+Collaborate with customers to understand the business’ evolving software requirements.
+Provide application issue resolution and technical assistance.
+Participate in project planning discussions to define software design requirements, architecture, and development.
+Work closely with cross-functional teams such as other developers, software engineers, and stakeholders to meet project objectives and timelines.
+Assess risks and impacts.
+Providing timely functional releases to meet business requirements.
+Ensure quality by creating and executing tests to identify defects in the software.
+Managed workload and working within the enterprise.
+Creating and maintaining proper project documentation of software design, coding, and testing.
+Prepare user manuals and technical documentation as needed.
+Ensure compliance with current coding standards, regulations, and industry best practices.
+Primary Qualifications:
+A bachelor’s degree or 6-8 years of related technical experience is required.
+Minimum 6-8 years of relevant experience in the enterprise and with C#, ASP.NET, MVC, and Visual Studio.
+Must have .NET 1.1/2.0/4.5.x experience.
+Must have significant SQL programming experience. Oracle experience is a plus.
+Strong working knowledge of JavaScript, jQuery, Angular, HTML, and CSS a plus.
+Experience with SOAP and REST-based web services.
+Expertise in source control such as Microsoft TFS, GitHub, etc.
+Individual Skills & Competencies:
+Ability to resolve highly complex technical issues and identify product/service innovations.
+Must have excellent communication skills and communicate with the team, business, customers, and upper management.
+Capable of time management, planning, and executing projects on time, in-budget, and fully documented.
+Ability to maintain overall professionalism and interact with customers.
+Excellent written and verbal communication skills.
+Ability to work well within a structured team environment.
+Ability to attend project meetings and relay status to the team.
 Benefits:
-
-Flexible schedule
-Work Location: Remote
+Loomis offers one of the most comprehensive employee benefits packages in the industry, which includes:
+Vacation and Sick Time (PTO), as well as Paid Holidays
+Health & Dental Insurance
+Vision Insurance
+401(k) Plan
+Basic Life Insurance Plan
+Voluntary Life Insurance Plan
+Flexible Spending and Health Savings Account
+Dependent Care Account
+Industry-leading Training and Development
+Loomis is an Equal Opportunity Employer and Drug free

@@ -1,6 +1,5 @@
 .env
 *.pem
 generated/
+responses/
 *.pdf
-resume-context.txt
-job-description.txt

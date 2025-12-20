@@ -1,664 +1,480 @@
-# Autofill API - Complete Rewrite
+# Autofill API - TODO
 
-## Architecture Overview
+## Workflow Overview
+```
+1. Input: experience.md + job description + constants.json
+2. Generate: Resume PDF + Cover Letter
+3. Bookmarklet: Form replica modal → Selective field filling
+4. Track: Update Google Doc with application record
+```
 
-**Goal:** Generate tailored resumes, cover letters, and autofill application forms using LLM + constant fallbacks.
+**Constraints**: Must work on iPhone browser (Safari) using bookmarklets only.
+
+---
+
+## NEW MODAL ARCHITECTURE & IMPLEMENTATION PLAN
+
+### Overview
+Complete redesign of the bookmarklet interface to display a form replica inside the modal, with selective field filling and smart constant management.
+
+---
+
+### Part 1: State Management & Caching
+
+**LocalStorage Schema:**
+```javascript
+{
+  "autofill_constants": {
+    "first_name": "Luke",
+    "disability_status": "no",
+    "veteran_status": "no",
+    // ... all constants
+  },
+  "autofill_constants_timestamp": 1702847123456,
+  "autofill_script_cache": "...(full script.js code)...",
+  "autofill_script_timestamp": 1702847123456,
+  "autofill_form_state": {
+    "linkedin.com/jobs/123": {
+      "selections": ["email", "phone", "why_work_here"],
+      "values": {
+        "email": "luke@...",
+        "phone": "(832)...",
+        "why_work_here": "I'm excited..."
+      }
+    }
+  }
+}
+```
+
+**Caching Strategy:**
+- Constants: 1 hour TTL
+- Script: 5 minute TTL
+- Form state: Per-URL (persist selections between reopens)
+
+**Implementation:**
+```javascript
+class CacheManager {
+  static TTL_CONSTANTS = 3600000; // 1 hour
+  static TTL_SCRIPT = 300000;     // 5 minutes
+
+  getConstants() {
+    // Check timestamp, fetch if expired
+    // Return from localStorage if valid
+  }
+
+  saveConstants(data) {
+    // Save with current timestamp
+  }
+
+  getFormState(url) {
+    // Load saved selections for this URL
+  }
+}
+```
+
+---
+
+### Part 2: New Modal UI Structure
+
+**Visual Layout:**
+```
+┌─────────────────────────────────────────────┐
+│  ✕                                   ⚙️      │  <- Fixed header
+│  [Config Fill] [LLM Fill]                   │  <- Action buttons
+│  [Select All] [Clear]                       │  <- Selection helpers
+├─────────────────────────────────────────────┤
+│                                              │
+│  ☐ First Name                               │  <- Scrollable form
+│    [Luke                          ]         │     replica area
+│                                              │
+│  ☑ Email                                    │  <- Checked field
+│    [lukestogsdill@gmail.com       ]         │
+│                                              │
+│  ☐ Why do you want to work here?           │
+│    [________________________________]       │
+│    [________________________________]       │
+│                                              │
+│  ☐ Years of Experience                      │
+│    [1-3                        ▼]           │  <- Dropdown
+│                                              │
+│  ☑ Are you a veteran?                       │  <- Checked field
+│    ○ Yes  ● No                              │  <- Radio buttons
+│                                              │
+├─────────────────────────────────────────────┤
+│  [Save Selected as Constants]               │  <- Bottom action
+└─────────────────────────────────────────────┘
+```
+
+**Components:**
+1. **Header Bar** (fixed, 60px)
+   - Left: X button to close
+   - Right: ⚙️ settings cog (opens constants manager)
+
+2. **Action Bar** (fixed, 50px)
+   - Config Fill button (blue gradient)
+   - LLM Fill button (green gradient)
+
+3. **Selection Bar** (fixed, 40px)
+   - Select All (small button)
+   - Clear (small button)
+   - Counter: "3 of 12 selected"
+
+4. **Form Area** (scrollable)
+   - Each field rendered as:
+     ```html
+     <div class="field-row">
+       <input type="checkbox" class="field-select" />
+       <div class="field-content">
+         <label>Field Label</label>
+         <input/select/textarea> <!-- Actual input -->
+       </div>
+     </div>
+     ```
+
+5. **Bottom Actions** (fixed, 60px)
+   - "Save Selected as Constants" button
+
+---
+
+### Part 3: Semantic Constant Matching System
+
+**The Problem:**
+Questions are worded differently but mean the same thing:
+- "Are you a veteran?" vs "Do you have military service?"
+- "Are you disabled?" vs "Do you NOT have a disability?" (negation!)
+
+**The Solution:**
+Store constants by **semantic meaning**, not literal wording.
+
+**Semantic Constant Categories:**
+```javascript
+const SEMANTIC_CATEGORIES = {
+  // Personal Info
+  identity: {
+    patterns: ['first name', 'fname', 'given name'],
+    constant_key: 'first_name'
+  },
+
+  // Yes/No Status Questions
+  disability: {
+    constant_key: 'disability_status',
+    type: 'boolean'
+  },
+
+  veteran: {
+    patterns: ['veteran', 'military', 'armed forces', 'service member'],
+    constant_key: 'veteran_status',
+    type: 'boolean'
+  },
+
+  sponsorship: {
+    patterns: ['sponsorship', 'visa', 'work authorization', 'h1b'],
+    constant_key: 'require_sponsorship',
+    type: 'boolean'
+  },
+
+  felony: {
+    patterns: ['convicted', 'felony', 'criminal', 'crime'],
+    constant_key: 'convicted_felony',
+    type: 'boolean'
+  },
+
+  clearance: {
+    patterns: ['security clearance', 'clearance', 'classified'],
+    constant_key: 'security_clearance',
+    type: 'boolean'
+  },
+
+  relocation: {
+    patterns: ['relocate', 'move', 'willing to move', 'relocation'],
+    constant_key: 'willing_to_relocate',
+    type: 'boolean'
+  }
+}
+```
+
+**Matching Algorithm:**
+```javascript
+function matchSemanticConstant(fieldLabel, constants) {
+  // 1. Normalize label
+  const normalized = normalizeLabel(fieldLabel); // lowercase, no punctuation
+
+  // 2. Detect negation
+  const hasNegation = detectNegation(normalized);
+  // Looks for: "not", "don't", "do not", "are you NOT"
+
+  // 3. Extract topic
+  for (const [category, config] of Object.entries(SEMANTIC_CATEGORIES)) {
+    for (const pattern of config.patterns) {
+      if (normalized.includes(pattern)) {
+        // Found topic!
+        const constantKey = config.constant_key;
+        let value = constants[constantKey];
+
+        // 4. Handle negation
+        if (hasNegation && config.type === 'boolean') {
+          value = invertBoolean(value); // "yes" -> "no", "no" -> "yes"
+        }
+
+        // 5. Map to field options
+        if (field.options) {
+          return matchValueToOptions(value, field.options);
+        }
+
+        return { value, matched: true, source: 'semantic' };
+      }
+    }
+  }
+
+  // 6. Fallback to direct matching
+  return directMatch(fieldLabel, constants);
+}
+```
+
+**Example Flows:**
+
+**Example 1: Standard Question**
+```
+Field: "Are you a veteran?"
+Options: ["Yes", "No"]
+
+1. Normalize: "are you a veteran"
+2. Detect negation: NO
+3. Extract topic: "veteran" → constant_key: "veteran_status"
+4. Get value: constants["veteran_status"] = "no"
+5. Match to options: "no" → "No"
+6. Return: "No"
+```
+
+**Example 2: Negated Question**
+```
+Field: "Are you NOT a person with a disability?"
+Options: ["Yes", "No"]
+
+1. Normalize: "are you not a person with a disability"
+2. Detect negation: YES (contains "not")
+3. Extract topic: "disability" → constant_key: "disability_status"
+4. Get value: constants["disability_status"] = "no"
+5. Invert due to negation: "no" → "yes"
+6. Match to options: "yes" → "Yes"
+7. Return: "Yes" (correct! You are NOT disabled)
+```
+
+**Example 3: Different Wording**
+```
+Field: "Do you require visa sponsorship?"
+Options: ["I do", "I do not"]
+
+1. Normalize: "do you require visa sponsorship"
+2. Detect negation: NO
+3. Extract topic: "sponsorship" → constant_key: "require_sponsorship"
+4. Get value: constants["require_sponsorship"] = "no"
+5. Match to options: "no" → "I do not"
+6. Return: "I do not"
+```
+
+**Negation Detection:**
+```javascript
+function detectNegation(text) {
+  const negationPatterns = [
+    /\bnot\b/,
+    /\bdon't\b/,
+    /\bdo not\b/,
+    /\bdoes not\b/,
+    /\baren't\b/,
+    /\bare not\b/,
+    /\bisn't\b/,
+    /\bis not\b/
+  ];
+  return negationPatterns.some(pattern => pattern.test(text));
+}
+```
+
+**Value Mapping:**
+```javascript
+function matchValueToOptions(value, options) {
+  const yesVariants = ['yes', 'y', 'true', '1', 'i do', 'i am', 'agree'];
+  const noVariants = ['no', 'n', 'false', '0', 'i do not', 'i am not', 'disagree'];
+
+  const normalizedValue = value.toLowerCase();
+
+  for (const option of options) {
+    const optionText = option.text.toLowerCase();
+
+    if (yesVariants.includes(normalizedValue)) {
+      if (yesVariants.some(v => optionText.includes(v))) {
+        return option.value;
+      }
+    }
+
+    if (noVariants.includes(normalizedValue)) {
+      if (noVariants.some(v => optionText.includes(v))) {
+        return option.value;
+      }
+    }
+  }
+
+  return value; // Fallback
+}
+```
+
+---
+
+### Part 4: Save as Constant Feature
 
 **Workflow:**
-```
-1. Input: experience.md + job description/company info (manual or scraped)
-2. LLM generates role-specific resume content (formatted for maroto)
-3. Generate PDF resume using existing Go maroto templating (with 1-page constraint)
-4. Generate cover letter + universal application info
-5. Navigate to job application form
-6. Bookmarklet scrapes form fields
-7. API fills fields:
-   - Check constants (first_name, email, etc.)
-   - Fallback to LLM with resume generation context
-8. Update Google Doc with application record
-```
+1. User fills some fields (manually or via LLM)
+2. Selects fields they want to save as constants
+3. Clicks "Save Selected as Constants"
+4. Modal shows each selected field with:
+   - Current answer
+   - Auto-suggested semantic name
+   - Editable name input
 
-**Data Flow:**
+**Example Modal:**
 ```
-experience.md (source of truth)
-    ↓
-LLM tailors content for job → resume.json
-    ↓
-main.go generates PDF → resume.pdf (1 page max)
-    ↓
-LLM generates cover letter + universal info
-    ↓
-Form filling (constants → LLM fallback)
-    ↓
-Google Docs API (tracking)
+┌─────────────────────────────────────────┐
+│  Save as Constants                      │
+├─────────────────────────────────────────┤
+│  Field: "Are you a veteran?"            │
+│  Answer: "No"                           │
+│  Save as: [veteran_status   ]          │  <- Editable
+│           └─ suggested name             │
+│                                         │
+│  Field: "LinkedIn Profile URL"          │
+│  Answer: "linkedin.com/in/luke..."      │
+│  Save as: [linkedin_url      ]          │
+│                                         │
+│  [Cancel] [Save All]                    │
+└─────────────────────────────────────────┘
 ```
 
-**Storage:**
-- **No database** - everything derived from experience.md + LLM
-- **Constants file** (JSON): first_name, last_name, email, phone, etc.
-- **Google Docs** for application history tracking
-
----
-
-## Phase 1: Resume Generation Pipeline
-
-**Approach:**
-1. **Single LLM call** with strict content constraints (no regeneration loops)
-2. **Proportional scaling** if PDF exceeds 1 page (scales fonts/spacing, not content)
-3. **Manual job description input** (copy/paste from LinkedIn/Indeed)
-
-### Input Processing
-- [ ] Create `internal/input/parser.go`:
-  - `ParseExperience(experienceMd string) (Experience, error)` - parse experience.md
-  - `ParseJobDescription(jobDesc string) (JobInfo, error)` - extract company, role, requirements from manual paste
-    - Job description will be manual paste from LinkedIn/Indeed (no web scraping needed)
-!# well put this in like job-description.txt 
-
-### LLM Content Generation
-- [ ] Install Gemini SDK: `go get google.golang.org/api/ai`
-- [ ] Set up API key in `.env`: `GEMINI_API_KEY=your_key`
-- [ ] Create `internal/generator/resume_generator.go`:
-  - `GenerateResumeJSON(experience Experience, jobInfo JobInfo) (Resume, error)`:
-    - Takes experience.md content + job description
-    - Uses LLM to tailor achievements, projects, skills for this specific role
-    - Returns Resume struct (compatible with existing maroto code)
-    - **Single LLM call with strict constraints** - no regeneration loops
-  - Prompt template with strict content limits:
-    ```
-    "You are tailoring a resume for a specific job application.
-
-    Source experience: {experience.md content}
-
-    Target job:
-    - Company: {company}
-    - Role: {title}
-    - Requirements: {job_description}
-
-    Generate a resume.json that follows these STRICT CONSTRAINTS:
-    1. Work Experience: Include ONLY the 1-2 most relevant positions
-    2. Each position: Maximum 3 bullet points (choose most impactful)
-    3. Projects: Maximum 2 projects total
-    4. Each project: Maximum 3 bullet points
-    5. Skills: 4 categories maximum, 6-8 skills per category
-    6. Summary: Exactly 2 sentences
-    7. Total estimated content: ~250-300 words
-    8. Use exact format from provided schema
-    9. Prioritize impact over completeness
-
-    Mark longer text items with 'overflow: true' for proper spacing.
-
-    Output JSON only."
-    ```
-
-### Resume PDF Generation (Existing System)
-- [ ] Integrate existing maroto code from resume-builder
-- [ ] Create `internal/generator/pdf_generator.go`:
-  - Move `getMaroto()` function from main.go
-  - Move `getPrimaryColor()` helper
-  - `GeneratePDF(resume Resume, outputPath string) error`
-  - Add configurable scaling parameters (fontSizes, rowHeights, margins)
-- [ ] Add 1-page constraint with proportional scaling:
-  - Generate PDF with normal sizes (attempt 1)
-  - Check if page count > 1
-  - If overflow: Apply scaling algorithm (max 3 attempts)
-    ```go
-    scaleFactor := 0.95  // Start with 5% reduction
-    for attempt := 1; attempt <= 3; attempt++ {
-        if pageCount <= 1 { break }
-
-        // Scale all dimensions proportionally
-        config.FontSizes = scaleMap(config.FontSizes, scaleFactor)
-        config.RowHeights = scaleMap(config.RowHeights, scaleFactor)
-        config.Margins = scaleMargins(config.Margins, scaleFactor)
-
-        // Regenerate PDF with scaled dimensions
-        GeneratePDF(resume, config)
-        scaleFactor -= 0.05  // Reduce by additional 5% if needed
-    }
-    ```
-  - Keep aspect ratios and readability (minimum font size: 8pt)
-- [ ] Copy font files and icons to project:
-  - `fonts/DejaVuSans*.ttf`
-  - `icons-png/*.png`
-
-### Cover Letter Generation
-- [ ] Create `internal/generator/cover_letter_generator.go`:
-  - `GenerateCoverLetter(resume Resume, jobInfo JobInfo) (string, error)`:
-    - Uses LLM to write tailored cover letter
-    - 3-4 paragraphs max
-    - References specific job requirements
-    - Highlights relevant achievements from resume
-  - Prompt template:
-    ```
-    "Write a professional cover letter for this application.
-
-    Job: {title} at {company}
-    Requirements: {job_description}
-
-    Your background (from resume):
-    {resume summary + key achievements}
-
-    Cover letter should:
-    - Be 3-4 paragraphs
-    - Address specific job requirements
-    - Highlight 2-3 most relevant achievements
-    - Show enthusiasm for company/role
-
-    Output cover letter text only."
-    ```
-
-### Universal Application Info Generation
-- [ ] Create `internal/generator/application_info.go`:
-  - `GenerateUniversalInfo(resume Resume, jobInfo JobInfo) (ApplicationInfo, error)`:
-    - Generates answers for common application questions:
-      - "Why do you want to work here?"
-      - "Why are you interested in this role?"
-      - "What are your salary expectations?"
-      - "When can you start?"
-      - "Why are you leaving your current job?"
-      - "What are your strengths/weaknesses?"
-    - Returns structured data for later use in form filling
-  - Store in memory during session (no persistence needed)
-
----
-
-## Phase 2: Form Autofill System
-
-### Constants Management
-- [ ] Create `constants.json`:
-  ```json
-  {
-    "first_name": "Luke",
-    "last_name": "Stogsdill",
-    "email": "lukestogsdill@gmail.com",
-    "phone": "(832) 392-2613",
-    "location": "Houston, TX 77064",
-    "city": "Houston",
-    "state": "TX",
-    "zip": "77064",
-    "country": "United States",
-    "linkedin_url": "https://linkedin.com/in/luke-stogsdill",
-    "github_url": "https://github.com/lukestogsdill",
-    "website_url": "https://lustogs.com",
-    "years_experience": "2",
-    "willing_to_relocate": "yes",
-    "require_sponsorship": "no",
-    "authorized_to_work": "yes",
-    "over_18": "yes"
-  }
-  ```
-- [ ] Create `internal/constants/loader.go`:
-  - `LoadConstants() (map[string]string, error)` - load from constants.json
-  - `GetConstant(key string) (string, bool)` - retrieve constant value
-
-### Field Matching Logic
-- [ ] Create `internal/matcher/matcher.go`:
-  - `MatchField(label string, constants map[string]string) (value string, source string, found bool)`:
-    1. Normalize label (lowercase, trim, remove special chars)
-    2. Check if label matches any constant key (fuzzy match)
-    3. Return (value, "constant", true) if found
-    4. Return ("", "", false) if not found
-  - Fuzzy matching rules:
-    - "first name" / "fname" / "given name" → first_name
-    - "email address" / "e-mail" → email
-    - "phone number" / "mobile" / "telephone" → phone
-
-### LLM Fallback for Unknown Fields
-- [ ] Create `internal/matcher/llm_matcher.go`:
-  - `FillFieldWithLLM(label string, fieldType string, context FieldContext) (string, error)`:
-    - Takes field label, type (text/select/radio), and context (job info, resume, cover letter)
-    - Uses LLM to generate appropriate answer
-    - Context includes: resume content, cover letter, universal application info
-  - Prompt template:
-    ```
-    "You are filling out a job application form.
-
-    Field label: {label}
-    Field type: {type}
-    Available options (if select/radio): {options}
-
-    Context:
-    - Job: {job_title} at {company}
-    - Your resume summary: {resume.summary}
-    - Your skills: {resume.skills}
-    - Cover letter: {cover_letter}
-    - Pre-generated answers: {universal_info}
-
-    Provide a concise, appropriate answer for this field.
-    Output answer only (no explanation)."
-    ```
-
-### Enhanced Bookmarklet Field Collection
-- [ ] Update `script.js` to collect:
-  - All input types: text, email, tel, url, date, number
-  - Textareas
-  - Select dropdowns (include all options)
-  - Radio buttons (group by name, include all options)
-  - Checkboxes
-  - Field context:
-    - Associated label text
-    - Placeholder text
-    - Section headings (h2/h3 above field)
-    - Fieldset/legend text
-    - aria-label
-    - Help text
-- [ ] Extract job context from page:
-  - Job title (page title, h1, common selectors)
-  - Company name (domain, page content, meta tags)
-  - Job description (try common selectors: .description, .job-details, etc.)
-- [ ] Send enhanced structure to API:
-  ```javascript
-  {
-    fields: [
-      {
-        name: "fname",
-        label: "First Name",
-        type: "text",
-        required: true,
-        placeholder: "Enter your first name",
-        context: "Personal Information"
-      },
-      {
-        name: "cover_letter",
-        label: "Cover Letter",
-        type: "textarea",
-        maxlength: 5000,
-        required: false,
-        context: "Application Materials"
-      },
-      {
-        name: "years_exp",
-        label: "Years of Experience",
-        type: "select",
-        options: ["0-1", "1-3", "3-5", "5-7", "7+"],
-        required: true
-      }
-    ],
-    job_context: {
-      title: "Senior Full Stack Developer",
-      company: "Acme Corp",
-      description: "We are looking for..."
-    }
-  }
-  ```
-
-### API Fill Handler
-- [ ] Create `POST /api/fill` endpoint:
-  - Parse incoming request (fields + job_context)
-  - If new job_context, trigger resume generation:
-    1. Load experience.md
-    2. Generate tailored resume.json with LLM
-    3. Generate PDF
-    4. Generate cover letter
-    5. Generate universal application info
-    6. Store in memory for this session
-  - For each field:
-    1. Try constant match first (MatchField)
-    2. If no match, use LLM fallback (FillFieldWithLLM)
-    3. Handle field type (text/select/radio/checkbox)
-    4. Return appropriate value
-  - Return response:
-    ```json
-    {
-      "fields": {
-        "fname": "Luke",
-        "email": "lukestogsdill@gmail.com",
-        "cover_letter": "Dear Hiring Manager...",
-        "years_exp": "1-3",
-        "why_this_company": "I'm excited about Acme Corp because..."
-      },
-      "metadata": {
-        "constant_matches": 8,
-        "llm_generated": 3,
-        "resume_generated": true
+**Auto-suggestion Logic:**
+```javascript
+function suggestConstantName(fieldLabel, answer) {
+  // 1. Check if it matches a semantic category
+  for (const [category, config] of SEMANTIC_CATEGORIES) {
+    for (const pattern of config.patterns) {
+      if (fieldLabel.toLowerCase().includes(pattern)) {
+        return config.constant_key; // e.g., "veteran_status"
       }
     }
-    ```
-- [ ] Handle select/radio fields:
-  - If options provided, LLM picks best match from options
-  - Example: years_exp options ["0-1", "1-3", "3-5"] → LLM chooses "1-3"
-- [ ] Handle edge cases:
-  - Multi-value fields (references: name1, email1, name2, email2)
-  - Date formatting
-  - Phone number formatting
-  - Address fields (parse location constant)
-
----
-
-## Phase 3: Application Tracking (Google Docs)
-
-### Google Docs Integration
-- [ ] Install Google Docs API library: `go get google.golang.org/api/docs/v1`
-- [ ] Set up Google Cloud project:
-  - Enable Google Docs API
-  - Create service account
-  - Download credentials JSON
-  - Share target Google Doc with service account email
-- [ ] Create `.env` entry: `GOOGLE_DOC_ID=your_doc_id`
-- [ ] Create `internal/tracking/google_docs.go`:
-  - `AppendApplication(application Application) error`:
-    - Appends new entry to Google Doc
-    - Format:
-      ```
-      ---
-      Date: 2025-12-05
-      Company: Acme Corp
-      Role: Senior Full Stack Developer
-      Resume Generated: ✓
-      Cover Letter: [link to generated file]
-      Status: Applied
-
-      Job Description:
-      {description}
-
-      Fields Filled:
-      - first_name: Luke (constant)
-      - email: lukestogsdill@gmail.com (constant)
-      - cover_letter: [LLM generated]
-      - why_this_company: [LLM generated]
-      ---
-      ```
-  - Uses Google Docs API to append formatted text
-  - Include metadata: what was filled, source (constant vs LLM)
-
-### Tracking Trigger
-- [ ] After successful form fill, call `AppendApplication()`:
-  - Include: company, role, job description, filled fields, sources
-  - Include links to generated resume PDF / cover letter
-  - Mark timestamp
-
----
-
-## Phase 4: File Management
-
-### Generated Files Organization
-- [ ] Create directory structure:
-  ```
-  generated/
-    ├── 2025-12-05_acme-corp_senior-fullstack/
-    │   ├── resume.json
-    │   ├── resume.pdf
-    │   ├── cover_letter.txt
-    │   └── application_info.json
-    └── 2025-12-04_startup-xyz_frontend/
-        ├── resume.json
-        ├── resume.pdf
-        ├── cover_letter.txt
-        └── application_info.json
-  ```
-- [ ] Create `internal/storage/files.go`:
-  - `CreateApplicationFolder(company, role, date) (path string, error)`
-  - `SaveResume(path, content) error`
-  - `SaveCoverLetter(path, content) error`
-  - `SaveApplicationInfo(path, info) error`
-  - `GetLatestApplication() (path string, error)` - for reusing recent generation
-
-### Session Management
-- [ ] Keep generated content in memory during API session:
-  - Resume object
-  - Cover letter text
-  - Universal application info
-  - Avoid regenerating for same job (use company+role as key)
-- [ ] Add TTL (1 hour) - refresh if stale
-
----
-
-## Phase 5: API Endpoints
-
-### Core Endpoints
-- [ ] `POST /api/generate` - Generate resume/cover letter for job
-  - Input: job description, company name, role title
-  - Output: resume.pdf path, cover_letter.txt path
-  - Saves to generated/ folder
-- [ ] `POST /api/fill` - Fill form fields (covered in Phase 2)
-  - Calls /api/generate internally if new job
-- [ ] `GET /api/constants` - Get all constants
-- [ ] `POST /api/constants` - Update constants
-- [ ] `GET /script.js` - Serve bookmarklet (existing)
-
-### Resume Generation Endpoint Details
-- [ ] Request format:
-  ```json
-  {
-    "job_description": "We are looking for...",
-    "company": "Acme Corp",
-    "role": "Senior Full Stack Developer",
-    "job_url": "https://acme.com/careers/123" // optional
   }
-  ```
-- [ ] Response format:
-  ```json
-  {
-    "resume_pdf": "generated/2025-12-05_acme-corp_senior-fullstack/resume.pdf",
-    "cover_letter": "generated/2025-12-05_acme-corp_senior-fullstack/cover_letter.txt",
-    "session_id": "abc123",
-    "page_count": 1,
-    "success": true
-  }
-  ```
 
----
-
-## Phase 6: 1-Page Resume Constraint (Proportional Scaling)
-
-### Scaling Configuration
-- [ ] Create `internal/generator/config.go`:
-  - Define `PDFConfig` struct with configurable dimensions:
-    ```go
-    type PDFConfig struct {
-        FontSizes   map[string]float64  // "header": 16, "name": 20, "body": 10, etc.
-        RowHeights  map[string]float64  // "header": 15, "summary": 15, "achievement": 6, etc.
-        Margins     Margins             // Top, Bottom, Left, Right
-        MinFontSize float64             // 8pt minimum for readability
-    }
-    ```
-  - `DefaultConfig() PDFConfig` - returns default sizes from current main.go
-  - `ScaleConfig(config PDFConfig, factor float64) PDFConfig` - scales all dimensions by factor
-
-### Page Count Detection
-- [ ] Research maroto page counting:
-  - Check if maroto provides `GetPageCount()` after generation
-  - Alternative: Save PDF to temp file, read page count with external library
-  - Fallback: Use `github.com/pdfcpu/pdfcpu` to read page count from generated PDF
-
-### Proportional Scaling Algorithm
-- [ ] Implement scaling loop in `GeneratePDF`:
-  ```go
-  func GeneratePDF(resume Resume, outputPath string) error {
-      config := DefaultConfig()
-
-      for attempt := 1; attempt <= 3; attempt++ {
-          // Generate PDF with current config
-          pdf := buildPDFWithConfig(resume, config)
-          pdf.SaveFile(outputPath)
-
-          // Check page count
-          pageCount := getPageCount(outputPath)
-          if pageCount <= 1 {
-              return nil  // Success!
-          }
-
-          // Scale down for next attempt
-          scaleFactor := 1.0 - (float64(attempt) * 0.05)  // 0.95, 0.90, 0.85
-          config = ScaleConfig(config, scaleFactor)
-
-          // Ensure minimum font size
-          if config.FontSizes["body"] < config.MinFontSize {
-              return fmt.Errorf("cannot fit on 1 page while maintaining readability")
-          }
-      }
-
-      return fmt.Errorf("exceeded max scaling attempts")
-  }
-  ```
-
-### Overflow Handling
-- [ ] Keep `overflow: true` flag in Achievement/Skill structs
-- [ ] LLM marks longer text items with overflow flag
-- [ ] Apply extra spacing for overflow items (scales proportionally too):
-  - Normal achievement: 6 → scaled
-  - Overflow achievement: 8 → scaled
-
----
-
-## Phase 7: LLM Optimization
-
-### Gemini Configuration
-- [ ] Use Gemini 1.5 Flash (free tier):
-  - 15 requests/min
-  - 1M tokens/min
-  - 1,500 requests/day
-- [ ] Add retry logic with exponential backoff:
-  - Handle rate limits (429)
-  - Retry transient errors (500, 503)
-  - Max 3 retries
-- [ ] Log token usage:
-  - Input tokens
-  - Output tokens
-  - Request count
-  - Track against daily limit
-
-### Prompt Templates
-- [ ] Create `internal/llm/prompts.go`:
-  - `ResumeGenerationPrompt(experience, jobInfo, attempt)`
-  - `CoverLetterPrompt(resume, jobInfo)`
-  - `UniversalInfoPrompt(resume, jobInfo)`
-  - `FieldFillingPrompt(label, fieldType, options, context)`
-- [ ] Use system/user message format:
-  ```
-  System: "You are a professional resume writer..."
-  User: "{experience content}\n\nJob: {job_description}\n\nGenerate resume JSON."
-  ```
-
-### Context Window Management
-- [ ] Limit experience.md size if too large (>10k chars):
-  - Truncate oldest/least relevant entries
-  - Keep most recent 2-3 experiences + most impressive projects
-- [ ] For field filling, only send relevant context:
-  - Resume summary (not full resume)
-  - Relevant skills
-  - Cover letter first paragraph
-  - Universal info for that question type
-
----
-
-## Implementation Order
-
-1. **Phase 1**: Resume generation pipeline (LLM → JSON → PDF)
-2. **Phase 6**: 1-page constraint enforcement
-3. **Phase 2**: Form autofill (constants → LLM fallback)
-4. **Phase 5**: API endpoints
-5. **Phase 3**: Google Docs tracking
-6. **Phase 4**: File management
-7. **Phase 7**: LLM optimization
-
----
-
-## Testing Plan
-
-### Manual Testing
-- [ ] Test resume generation with sample job descriptions
-  - Verify 1-page output
-  - Check PDF formatting (maroto rendering)
-  - Validate overflow handling
-- [ ] Test form filling with real job application sites:
-  - Indeed
-  - LinkedIn
-  - Greenhouse
-  - Workday
-  - Lever
-- [ ] Test edge cases:
-  - Very long job descriptions
-  - Multiple select fields
-  - Radio button groups
-  - Required vs optional fields
-
-### Metrics to Track
-- [ ] Resume generation:
-  - Success rate (1 page on first try)
-  - Retry count
-  - Token usage per generation
-- [ ] Form filling:
-  - Constant match rate (target: 60%+)
-  - LLM fallback rate (target: 40%-)
-  - Field fill accuracy (manual verification)
-- [ ] Performance:
-  - Resume generation time (target: <10s)
-  - Form fill time (target: <5s)
-  - API response time
-
----
-
-## Key Differences from Previous Design
-
-❌ **Removed**: SQLite database, field mappings table, caching, applications table
-❌ **Removed**: Admin bookmarklet, CRUD interface
-❌ **Removed**: Multiple roles (fullstack/frontend/qa) - generate fresh each time
-❌ **Removed**: Static/role-specific/dynamic field type classification
-❌ **Removed**: Web scraping for job descriptions
-❌ **Removed**: LLM regeneration loops for content trimming
-
-✅ **Added**: experience.md as single source of truth
-✅ **Added**: Fresh LLM generation per job application
-✅ **Added**: Single LLM call with strict content constraints (1-2 positions, max 3 bullets each)
-✅ **Added**: Proportional PDF scaling if content overflows (scales fonts/spacing, not content)
-✅ **Added**: Manual job description input (copy/paste from LinkedIn/Indeed)
-✅ **Added**: Google Docs tracking instead of database
-✅ **Added**: Simple constants.json for basic fields
-✅ **Added**: Cover letter + universal application info generation
-✅ **Added**: Session-based caching (in memory, 1 hour TTL)
-
----
-
-## File Structure
-
-```
-autofill-api/
-├── experience.md                    # Source of truth (from resume-builder)
-├── constants.json                   # Static autofill values
-├── main.go                          # HTTP server + endpoints
-├── .env                            # GEMINI_API_KEY, GOOGLE_DOC_ID
-├── fonts/                          # DejaVu fonts for PDF
-│   ├── DejaVuSans.ttf
-│   ├── DejaVuSans-Bold.ttf
-│   └── ...
-├── icons-png/                      # Icons for PDF
-│   ├── map-pin.png
-│   ├── phone.png
-│   └── ...
-├── generated/                      # Output folder
-│   └── {date}_{company}_{role}/
-│       ├── resume.json
-│       ├── resume.pdf
-│       ├── cover_letter.txt
-│       └── application_info.json
-├── internal/
-│   ├── input/
-│   │   └── parser.go               # Parse experience.md + job description
-│   ├── generator/
-│   │   ├── resume_generator.go     # LLM → resume.json
-│   │   ├── pdf_generator.go        # JSON → PDF (maroto)
-│   │   ├── cover_letter_generator.go
-│   │   ├── application_info.go
-│   │   └── page_estimator.go       # 1-page constraint logic
-│   ├── constants/
-│   │   └── loader.go               # Load constants.json
-│   ├── matcher/
-│   │   ├── matcher.go              # Constant field matching
-│   │   └── llm_matcher.go          # LLM fallback for unknown fields
-│   ├── storage/
-│   │   └── files.go                # File management
-│   ├── tracking/
-│   │   └── google_docs.go          # Append to Google Doc
-│   └── llm/
-│       ├── client.go               # Gemini API client
-│       └── prompts.go              # Prompt templates
-└── public/
-    └── script.js                   # Bookmarklet (enhanced field collection)
+  // 2. Generate from field label
+  return fieldLabel
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, '_')
+    .slice(0, 30);
+}
 ```
 
 ---
 
-## Next Steps
+### Part 5: Selective Fill Workflow
 
-Start with Phase 1: Get the core resume generation working (experience.md → LLM → resume.json → PDF with 1-page constraint).
+**Config Fill (Constants Only):**
+1. User checks fields they want to fill
+2. Clicks "Config Fill"
+3. System:
+   - Loops through checked fields only
+   - Tries semantic matching first
+   - Falls back to direct matching
+   - Fills matched fields
+   - Shows: "Filled 5 of 7 selected fields"
+
+**LLM Fill (Unmatched Fields):**
+1. User checks fields they want to fill
+2. Clicks "LLM Fill"
+3. System:
+   - Sends only checked fields to API
+   - API tries constants first
+   - Uses LLM for unmatched
+   - Returns values for checked fields
+   - Fills them in
+   - Shows: "Filled 7 of 7 selected fields (2 constants, 5 LLM)"
+
+---
+
+### Part 6: Implementation Checklist
+
+**Phase 1: Foundation**
+- [ ] Create CacheManager class (localStorage wrapper)
+- [ ] Implement constants caching with TTL
+- [ ] Implement script caching with TTL
+- [ ] Create state management for selections
+
+**Phase 2: New Modal UI**
+- [ ] Build new modal structure (header, action bar, form area, footer)
+- [ ] Render form fields as replica with checkboxes
+- [ ] Implement field selection (checkboxes)
+- [ ] Add Select All / Clear buttons with counter
+- [ ] Style with slate gradient theme
+
+**Phase 3: Semantic Matching**
+- [ ] Create SEMANTIC_CATEGORIES config
+- [ ] Implement matchSemanticConstant()
+- [ ] Implement detectNegation()
+- [ ] Implement matchValueToOptions()
+- [ ] Test with various question phrasings
+
+**Phase 4: Selective Fill**
+- [ ] Implement Config Fill (selected fields only)
+- [ ] Implement LLM Fill (selected fields only)
+- [ ] Update API to accept field selection
+- [ ] Show fill results with counts
+
+**Phase 5: Save as Constant**
+- [ ] Build save-as-constant modal
+- [ ] Implement suggestConstantName()
+- [ ] Allow user to edit suggested names
+- [ ] Save to constants.json via API
+- [ ] Update cache
+
+**Phase 6: Settings**
+- [ ] Move constants manager to settings modal
+- [ ] Add/remove constants functionality
+- [ ] Cache invalidation on save
+
+---
+
+### Expected User Flow
+
+1. **Open bookmarklet** → Modal shows form replica
+2. **Auto-select common fields** → email, phone, name (pre-checked)
+3. **Click "Config Fill"** → Instantly fills 8 fields from constants
+4. **Review remaining fields** → Check ones they want LLM to fill
+5. **Click "LLM Fill"** → AI fills 4 complex questions
+6. **Manually edit one answer** → Adjust wording
+7. **Select that field** → Click "Save as Constant"
+8. **Save as "preferred_work_style"** → Now reusable
+9. **Close modal** → All fields filled, ready to submit!
+
+---
+
+This architecture provides:
+✅ Smart semantic matching (handles negation)
+✅ Selective filling (only what you want)
+✅ Persistent caching (fast loads)
+✅ Constant building (learn over time)
+✅ Full control (review before fill)
+
+---
+
+## Old Checklist (Reference - Will be replaced by above)
+
+### 1. Resume Generation
+- [x] Load experience.md
+- [x] Parse job description from file
+- [x] Generate resume JSON with LLM (Gemini)
+- [x] Generate PDF from JSON (maroto)
+- [ ] Refine LLM prompt for better resume output
+
+### 2. Cover Letter Generation
+- [ ] Create cover letter generator
+
+### 3. Google Doc Tracking
+- [ ] Set up Google Docs API integration
+- [ ] Create tracking function
+- [ ] Trigger after successful form fill
