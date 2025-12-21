@@ -66,6 +66,7 @@ func main() {
 	http.HandleFunc("/api/fill", handleFill)
 	http.HandleFunc("/api/context", handleContext)
 	http.HandleFunc("/api/constants", handleConstants)
+	http.HandleFunc("/api/recent", handleRecent)
 	http.HandleFunc("/script.js", serveScript)
 
 	port := os.Getenv("PORT")
@@ -434,6 +435,83 @@ func handleConstants(w http.ResponseWriter, r *http.Request) {
 	default:
 		respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
+}
+
+// handleRecent returns the most recent response from /responses directory
+func handleRecent(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Content-Type", "application/json")
+
+	// Handle preflight
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != "GET" {
+		respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Read responses directory
+	entries, err := os.ReadDir("responses")
+	if err != nil {
+		log.Printf("Error reading responses directory: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to read responses directory")
+		return
+	}
+
+	// Filter for JSON files and find the most recent
+	var mostRecentFile string
+	var mostRecentTime time.Time
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+
+		if mostRecentFile == "" || info.ModTime().After(mostRecentTime) {
+			mostRecentFile = entry.Name()
+			mostRecentTime = info.ModTime()
+		}
+	}
+
+	if mostRecentFile == "" {
+		respondWithError(w, http.StatusNotFound, "No response files found")
+		return
+	}
+
+	// Read the most recent file
+	filePath := fmt.Sprintf("responses/%s", mostRecentFile)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Printf("Error reading file %s: %v", filePath, err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to read response file")
+		return
+	}
+
+	// Parse and return the JSON
+	var response map[string]interface{}
+	if err := json.Unmarshal(data, &response); err != nil {
+		log.Printf("Error parsing JSON from %s: %v", filePath, err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to parse response file")
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		return
+	}
+
+	log.Printf("Returned most recent response: %s", mostRecentFile)
 }
 
 // Helper function for consistent error responses

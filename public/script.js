@@ -4,6 +4,17 @@
   let collectedFields = [];
   let fieldElements = new Map();
 
+  // Simple debug logging - just collect and show in alert
+  let debugLogs = [];
+
+  function log(...args) {
+    console.log(...args);
+    const logEntry = args.map(arg =>
+      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+    ).join(' ');
+    debugLogs.push(logEntry);
+  }
+
   // Styles
   const styles = {
     modal: `
@@ -138,10 +149,13 @@
 
   // Collect form fields
   function collectFormFields() {
+    log('🟡 collectFormFields: Starting...');
     const fields = [];
     const elements = new Map();
 
     const forms = document.querySelectorAll('form');
+    log('🟡 collectFormFields: Found', forms.length, 'forms');
+
     if (!forms.length) {
       alert('No forms found on this page!');
       return null;
@@ -192,6 +206,8 @@
       });
     });
 
+    log('🟡 collectFormFields: Collected', fields.length, 'fields');
+    log('🟡 collectFormFields: Field IDs:', fields.map(f => f.id));
     return { fields, elements };
   }
 
@@ -225,42 +241,71 @@
 
   // Fill form with data
   function fillForm(data) {
+    log('🟢 fillForm: Starting with data:', data);
+    log('🟢 fillForm: fieldElements has', fieldElements.size, 'elements');
     let filledCount = 0;
 
     fieldElements.forEach((element, fieldId) => {
-      const value = data[fieldId];
-      if (!value) return;
+      let value = data[fieldId];
+
+      // Special case: ALL password type fields get the password constant
+      if (element.type === 'password') {
+        // Find password constant in data (case-insensitive)
+        const passwordKey = Object.keys(data).find(key => key.toLowerCase() === 'password');
+        if (passwordKey) {
+          value = data[passwordKey];
+          log(`🔑 fillForm: Password field "${fieldId}" (type=password) filled with password constant`);
+        } else {
+          log(`🔴 fillForm: Password field "${fieldId}" detected but no Password key in constants!`);
+        }
+      }
+
+      log(`🟢 fillForm: Checking field "${fieldId}" - value from data:`, value);
+
+      if (!value) {
+        log(`🟡 fillForm: Skipping field "${fieldId}" - no value in data`);
+        return;
+      }
 
       if (element.tagName === 'SELECT') {
+        log(`🟢 fillForm: Field "${fieldId}" is SELECT, filling with:`, value);
         for (let option of element.options) {
           if (option.value === value || option.text.toLowerCase().includes(value.toLowerCase())) {
             element.value = option.value;
             filledCount++;
+            log(`✅ fillForm: Filled SELECT "${fieldId}" with:`, option.value);
             break;
           }
         }
       } else if (element.type === 'checkbox') {
+        log(`🟢 fillForm: Field "${fieldId}" is CHECKBOX, filling with:`, value);
         element.checked = value === true || value === 'true' || value === 'yes';
         filledCount++;
+        log(`✅ fillForm: Filled CHECKBOX "${fieldId}" to:`, element.checked);
       } else if (element.type === 'radio') {
+        log(`🟢 fillForm: Field "${fieldId}" is RADIO, filling with:`, value);
         const field = collectedFields.find(f => f.id === fieldId);
         if (field && field.elements) {
           field.elements.forEach(radio => {
             if (radio.value === value || radio.value.toLowerCase().includes(value.toLowerCase())) {
               radio.checked = true;
               filledCount++;
+              log(`✅ fillForm: Filled RADIO "${fieldId}" with:`, value);
             }
           });
         }
       } else {
+        log(`🟢 fillForm: Field "${fieldId}" is ${element.type}, filling with:`, value);
         element.value = value;
         filledCount++;
+        log(`✅ fillForm: Filled "${fieldId}" with:`, value);
       }
 
       element.dispatchEvent(new Event('input', { bubbles: true }));
       element.dispatchEvent(new Event('change', { bubbles: true }));
     });
 
+    log(`🟢 fillForm: Completed. Filled ${filledCount} fields total`);
     return filledCount;
   }
 
@@ -271,23 +316,42 @@
       if (!response.ok) throw new Error('Failed to fetch job context');
       return await response.json();
     } catch (error) {
-      console.error('Error fetching job context:', error);
+      log('Error fetching job context:', error);
       return { title: 'Unknown', company: 'Unknown', url: window.location.href };
     }
   }
 
   // Fill with constants only
   async function fillWithConstants() {
+    log('🔵 fillWithConstants: Starting...');
     const result = collectFormFields();
-    if (!result) return;
+    if (!result) {
+      log('🔴 fillWithConstants: collectFormFields returned null');
+      return;
+    }
 
     collectedFields = result.fields;
     fieldElements = result.elements;
+    log('🔵 fillWithConstants: Collected', collectedFields.length, 'fields');
 
     try {
       const context = await fetchJobContext();
 
-      const cleanFields = collectedFields.map(field => ({
+      // Filter out fields that already have values
+      const emptyFields = collectedFields.filter(field => {
+        if (field.type === 'checkbox' || field.type === 'radio') {
+          return true; // Always include checkboxes/radios
+        }
+        return !field.value || field.value.trim() === '';
+      });
+
+      if (emptyFields.length === 0) {
+        alert('All fields are already filled!');
+        closeModal();
+        return;
+      }
+
+      const cleanFields = emptyFields.map(field => ({
         id: field.id,
         name: field.name,
         type: field.type,
@@ -297,6 +361,8 @@
         value: field.value,
         options: field.options
       }));
+
+      log('🔵 fillWithConstants: Sending', cleanFields.length, 'fields to API');
 
       const response = await fetch(API_BASE + '/api/fill', {
         method: 'POST',
@@ -308,15 +374,32 @@
         })
       });
 
+      log('🔵 fillWithConstants: Response status:', response.status);
+
       if (!response.ok) throw new Error(`API error: ${response.status}`);
 
       const data = await response.json();
-      const filledCount = fillForm(data.fields || data);
+      log('🔵 fillWithConstants: Received data:', data);
+
+      // Fetch constants directly to ensure Password is available
+      const constResponse = await fetch(API_BASE + '/api/constants');
+      const constants = constResponse.ok ? await constResponse.json() : {};
+      log('🔵 fillWithConstants: Fetched constants:', constants);
+
+      // Merge constants with API response so Password is always available
+      const mergedData = { ...constants, ...(data.fields || data) };
+      log('🔵 fillWithConstants: Merged data:', mergedData);
+
+      const filledCount = fillForm(mergedData);
+      log('🔵 fillWithConstants: Filled', filledCount, 'fields');
 
       alert(`✓ Filled ${filledCount} fields with constants!`);
       closeModal();
     } catch (error) {
       alert(`Error: ${error.message}`);
+    } finally {
+      alert('DEBUG LOG:\n' + debugLogs.join('\n'));
+      debugLogs = [];
     }
   }
 
@@ -331,7 +414,21 @@
     try {
       const context = await fetchJobContext();
 
-      const cleanFields = collectedFields.map(field => ({
+      // Filter out fields that already have values
+      const emptyFields = collectedFields.filter(field => {
+        if (field.type === 'checkbox' || field.type === 'radio') {
+          return true; // Always include checkboxes/radios
+        }
+        return !field.value || field.value.trim() === '';
+      });
+
+      if (emptyFields.length === 0) {
+        alert('All fields are already filled!');
+        closeModal();
+        return;
+      }
+
+      const cleanFields = emptyFields.map(field => ({
         id: field.id,
         name: field.name,
         type: field.type,
@@ -354,35 +451,121 @@
       if (!response.ok) throw new Error(`API error: ${response.status}`);
 
       const data = await response.json();
-      const filledCount = fillForm(data.fields || data);
+
+      // Fetch constants to ensure Password is available
+      const constResponse = await fetch(API_BASE + '/api/constants');
+      const constants = constResponse.ok ? await constResponse.json() : {};
+
+      // Merge constants with API response
+      const mergedData = { ...constants, ...(data.fields || data) };
+
+      const filledCount = fillForm(mergedData);
 
       alert(`✓ Filled ${filledCount} fields with LLM!`);
       closeModal();
     } catch (error) {
       alert(`Error: ${error.message}`);
+    } finally {
+      alert('DEBUG LOG:\n' + debugLogs.join('\n'));
+      debugLogs = [];
+    }
+  }
+
+  // Fill from most recent saved response
+  async function fillFromRecent() {
+    log('🔵 fillFromRecent: Starting...');
+
+    try {
+      log('🔵 fillFromRecent: Fetching from', API_BASE + '/api/recent');
+      const response = await fetch(API_BASE + '/api/recent');
+      log('🔵 fillFromRecent: Response status:', response.status);
+
+      if (!response.ok) {
+        const error = await response.json();
+        log('🔴 fillFromRecent: Error response:', error);
+        throw new Error(error.error || 'Failed to fetch recent response');
+      }
+
+      const data = await response.json();
+      log('🔵 fillFromRecent: Received data:', data);
+
+      // The response should have a "fields" object with field IDs as keys
+      if (data.fields) {
+        log('🔵 fillFromRecent: Fields found:', Object.keys(data.fields).length, 'fields');
+        log('🔵 fillFromRecent: Field data:', data.fields);
+        log('🔵 fillFromRecent: Current fieldElements size:', fieldElements.size);
+        log('🔵 fillFromRecent: Current fieldElements keys:', Array.from(fieldElements.keys()));
+
+        // Fetch constants to ensure Password is available
+        const constResponse = await fetch(API_BASE + '/api/constants');
+        const constants = constResponse.ok ? await constResponse.json() : {};
+        log('🔵 fillFromRecent: Fetched constants:', constants);
+
+        // Merge constants with response data
+        const mergedData = { ...constants, ...data.fields };
+        log('🔵 fillFromRecent: Merged data:', mergedData);
+
+        const filledCount = fillForm(mergedData);
+        log('🔵 fillFromRecent: Filled', filledCount, 'fields');
+
+        if (filledCount === 0) {
+          alert('No fields were filled. Check console for details.');
+        } else {
+          alert(`Filled ${filledCount} fields from recent response`);
+        }
+        closeModal();
+      } else {
+        log('🔴 fillFromRecent: No fields in response. Data structure:', data);
+        throw new Error('Invalid response format - no fields found');
+      }
+    } catch (error) {
+      log('🔴 fillFromRecent: Error:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      alert('DEBUG LOG:\n' + debugLogs.join('\n'));
+      debugLogs = [];
     }
   }
 
   // Fill all (constants + LLM)
   async function fillAll() {
+    log('🔵 fillAll: Starting...');
     const result = collectFormFields();
-    if (!result) return;
+    if (!result) {
+      log('🔴 fillAll: collectFormFields returned null');
+      return;
+    }
 
     collectedFields = result.fields;
     fieldElements = result.elements;
+    log('🔵 fillAll: Collected', collectedFields.length, 'fields');
 
     try {
-      // First try constants
-      const constResponse = await fetch(API_BASE + '/api/constants');
-      if (constResponse.ok) {
-        const constants = await constResponse.json();
-        fillForm(constants);
+      // Filter out fields that already have values
+      const emptyFields = collectedFields.filter(field => {
+        if (field.type === 'checkbox' || field.type === 'radio') {
+          return true; // Always include checkboxes/radios
+        }
+        return !field.value || field.value.trim() === '';
+      });
+
+      if (emptyFields.length === 0) {
+        alert('All fields are already filled!');
+        closeModal();
+        return;
       }
+
+      // First fetch constants
+      const constResponse = await fetch(API_BASE + '/api/constants');
+      const constants = constResponse.ok ? await constResponse.json() : {};
+
+      // Fill with constants first
+      fillForm(constants);
 
       // Then fill remaining with LLM
       const context = await fetchJobContext();
 
-      const cleanFields = collectedFields.map(field => ({
+      const cleanFields = emptyFields.map(field => ({
         id: field.id,
         name: field.name,
         type: field.type,
@@ -405,12 +588,18 @@
       if (!response.ok) throw new Error(`API error: ${response.status}`);
 
       const data = await response.json();
-      const filledCount = fillForm(data.fields || data);
+
+      // Merge constants with LLM response
+      const mergedData = { ...constants, ...(data.fields || data) };
+      const filledCount = fillForm(mergedData);
 
       alert(`✓ Filled all fields!`);
       closeModal();
     } catch (error) {
       alert(`Error: ${error.message}`);
+    } finally {
+      alert('DEBUG LOG:\n' + debugLogs.join('\n'));
+      debugLogs = [];
     }
   }
 
@@ -648,7 +837,8 @@
 
     const buttons = [
       { text: 'Fill with Constants', icon: '📝', style: styles.buttonPrimary, action: fillWithConstants },
-      { text: 'Fill All (LLM)', icon: '⚡', style: styles.buttonSuccess, action: fillAll }
+      { text: 'Fill All (LLM)', icon: '⚡', style: styles.buttonSuccess, action: fillAll },
+      { text: 'Fill from Recent', icon: '📋', style: styles.buttonWarning, action: fillFromRecent }
     ];
 
     buttons.forEach(btn => {

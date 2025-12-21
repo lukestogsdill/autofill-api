@@ -1,52 +1,49 @@
-Loomis
-developer
-
+ION
+software engineer
 Full job description
-With a network of nearly 200 branches, Loomis armored transportation, cash management centers, and cash inventory vaults keep cash flowing throughout financial institutions and retail businesses across the US. Loomis prides itself on providing employees with opportunities for career advancement and job satisfaction. In fact, many of our company’s managers, vice presidents, and corporate executives started out in the branches as driver/guards and tellers. Our work can be challenging, but the thousands who have stayed with our company for decades will tell you that if you have the desire to learn and the drive to succeed, Loomis is the place to be. Come join our team!
+Our Company
 
-Job Overview: The Developer position will be responsible for the management, development, and upkeep of many of Loomis’ custom-developed, internal, business-facing, and customer-focused applications. This position will also rely on your current technical and architectural knowledge to develop and update applications with current techniques, technologies, and tools. Enterprise SDLC within a formal project process is critical in this role, as is your ability to document solutions and work within a development team.
+ION is the world’s most progressive FinTech company providing pioneering software and consultancy services to customers around the globe. We serve large financial institutions, trading firms, central banks, and corporations. We are committed to automating processes that positively impact our customers’ work and provide insights to enable more informed decision making. We provide software and data to our customers to simplify complex processes and digitize their businesses. Our products and services help the world's leading organizations do more, in a better and simpler way than ever before.
 
-Key Responsibilities:
-Provide ongoing support and maintenance for existing software applications.
-Design, develop, and maintain high-quality software applications and databases using industry-standard technology and best practices.
-Write clean, maintainable, and efficient code in various programming languages (e.g., Python, Java, JavaScript, etc.).
-Create integration solutions to connect various software systems and databases.
-Collaborate with customers to understand the business’ evolving software requirements.
-Provide application issue resolution and technical assistance.
-Participate in project planning discussions to define software design requirements, architecture, and development.
-Work closely with cross-functional teams such as other developers, software engineers, and stakeholders to meet project objectives and timelines.
-Assess risks and impacts.
-Providing timely functional releases to meet business requirements.
-Ensure quality by creating and executing tests to identify defects in the software.
-Managed workload and working within the enterprise.
-Creating and maintaining proper project documentation of software design, coding, and testing.
-Prepare user manuals and technical documentation as needed.
-Ensure compliance with current coding standards, regulations, and industry best practices.
-Primary Qualifications:
-A bachelor’s degree or 6-8 years of related technical experience is required.
-Minimum 6-8 years of relevant experience in the enterprise and with C#, ASP.NET, MVC, and Visual Studio.
-Must have .NET 1.1/2.0/4.5.x experience.
-Must have significant SQL programming experience. Oracle experience is a plus.
-Strong working knowledge of JavaScript, jQuery, Angular, HTML, and CSS a plus.
-Experience with SOAP and REST-based web services.
-Expertise in source control such as Microsoft TFS, GitHub, etc.
-Individual Skills & Competencies:
-Ability to resolve highly complex technical issues and identify product/service innovations.
-Must have excellent communication skills and communicate with the team, business, customers, and upper management.
-Capable of time management, planning, and executing projects on time, in-budget, and fully documented.
-Ability to maintain overall professionalism and interact with customers.
-Excellent written and verbal communication skills.
-Ability to work well within a structured team environment.
-Ability to attend project meetings and relay status to the team.
-Benefits:
-Loomis offers one of the most comprehensive employee benefits packages in the industry, which includes:
-Vacation and Sick Time (PTO), as well as Paid Holidays
-Health & Dental Insurance
-Vision Insurance
-401(k) Plan
-Basic Life Insurance Plan
-Voluntary Life Insurance Plan
-Flexible Spending and Health Savings Account
-Dependent Care Account
-Industry-leading Training and Development
-Loomis is an Equal Opportunity Employer and Drug free
+ION software underpins the global fixed income, foreign exchange, and derivatives markets, powers the world’s central banks, and enables the automation of workflows across critical treasury and commodities operations for thousands of companies worldwide. ION data and analytics are the golden source for M&A, equity, and leverage finance bankers worldwide. With a dynamic team of 13,000+ employees, in 40+ global offices, and 5,000+ customers worldwide, ION provides an unparalleled career experience for those who share our passion for growth and technology evolution.
+
+ION Group consists of the following divisions:
+ION Analytics: Provider of investment banking M&A, equity and debt data, analytics, and content
+ION Commodities: Provider of energy and commodities trading and risk management solutions
+ION Markets: Provider of workflow solutions that automate the complete trade lifecycle and deliver actionable insights in real-time
+ION Treasury: Provider of unique treasury and risk management solutions that help clients manage liquidity of any scale while mitigating operational, financial, and reputational risk
+
+Our Program
+
+Our Leadership Development Program (LDP) is a foundational global initiative focused on developing talent for ION’s growing operations around the world. The program provides an opportunity for outstanding university graduates to start a career in a dynamic and fast-paced global FinTech firm.
+
+Analysts will spend the first 3 years of their career in 3 unique, 12-month rotations gaining experience across the product lifecycle. At the end of their 3 rotations analysts will transition to a deeper dive in one area of ION.
+
+What You'll Do
+
+In the role of Software Developer, you will develop products for our global customers including Tier 1 banks and Fortune 100 corporations. You will be part of an Agile team, who is responsible for end-to-end product development, including:
+Analyzing business requirements and product solutioning
+Architecture and designs using the latest principles and patterns in software engineering
+Coding, testing, and continuous integration of solutions using the latest and upcoming technologies
+Your Contribution
+Build innovative products and solutions that:
+Reduce business process complexity
+Increase organizational efficiency through automation
+Liberate people from performing repetitive manual tasks
+Help ION's clients gain a competitive advantage by using our products
+Resolve complex technical and business issues and communicate effectively to Internal teams and ION clients
+Automate complex business workflows and processes and make a positive impact to client businesses
+
+Basic Qualifications
+
+Winter 2025 or Spring 2026 graduation
+3.3 GPA or above (transcript required)
+Bachelor’s, or Master’s, in Computer Science or related STEM majors, such as Data Science, or Quantitative Finance, with experience in hands-on programming required
+Authorization to work in selected country without restriction or need for sponsorship
+Demonstrated interest in finance and/or technology, ideally including work experience
+Passion for learning, self-improvement, and a questioning and challenging mindset
+Motivated self-starter who is proactive, enthusiastic, and passionate about what they do
+Strong problem-solving capabilities and the desire to understand the “why” behind each problem
+How You'll Grow
+
+Our 36-month Leadership Development Program (LDP) allows you to rotate through diff

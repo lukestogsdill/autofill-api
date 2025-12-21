@@ -1,5 +1,5 @@
 {
-  "middle_name": "E",
+  "password": "Autodude123$",
   "authorized_to_work": "yes",
   "city": "Houston",
   "country": "United States",
@@ -9,6 +9,7 @@
   "last_name": "Stogsdill",
   "linkedin_url": "https://linkedin.com/in/luke-stogsdill",
   "location": "Houston, TX 77064",
+  "middle_name": "E",
   "over_18": "yes",
   "phone": "(832) 392-2613",
   "require_sponsorship": "no",
