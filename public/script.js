@@ -7,7 +7,7 @@
 
   const CONFIG = {
     apiBase: API_URL.replace('/api/fill', ''),
-    llmTrigger: 'llm-fill',  // Type this in a form field to trigger LLM for that field
+    llmTrigger: '##',  // Type this in a form field to trigger LLM for that field
     debugMode: true
   };
 
@@ -158,10 +158,8 @@
     },
 
     show() {
-      if (this.logs.length > 0) {
-        alert('DEBUG LOG:\n' + this.logs.join('\n'));
-        this.logs = [];
-      }
+      // Deprecated - logs are now shown in the logs menu
+      // Keeping this method for backwards compatibility
     },
 
     clear() {
@@ -190,7 +188,7 @@
               <div style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
                 <div style="font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.4;">
                   <strong style="color: #60a5fa;">Workflow:</strong><br/>
-                  1. Fill Constants → 2. Type "llm-fill" in empty fields → 3. Fill LLM Fields → 4. Save to Doc
+                  1. Fill Constants → 2. Type "##" in empty fields → 3. Fill LLM Fields → 4. Save to Doc
                 </div>
               </div>
               <button id="fill-constants-btn" style="${STYLES.button}${STYLES.buttonPrimary}">
@@ -303,7 +301,7 @@
 
     logsView(logs) {
       const logsHTML = logs.length > 0
-        ? logs.map(log => `<div style="margin-bottom: 8px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 6px; font-size: 12px; font-family: monospace; word-wrap: break-word;">${log}</div>`).join('')
+        ? logs.slice().reverse().map(log => `<div style="margin-bottom: 8px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 6px; font-size: 12px; font-family: monospace; word-wrap: break-word;">${log}</div>`).join('')
         : '<div style="color: rgba(255,255,255,0.5); text-align: center; padding: 20px;">No logs yet</div>';
 
       return `
@@ -509,11 +507,11 @@
     },
 
     /**
-     * Get fields that have been marked with "llm-fill" by the user
+     * Get fields that have been marked with "##" by the user
      * Re-scans the page to get current values
      */
     getLLMMarkedFields() {
-      Logger.log('🔍 Scanning for fields marked with "llm-fill"...');
+      Logger.log('🔍 Scanning for fields marked with "##"...');
       const llmFields = [];
       const elements = new Map();
       const forms = document.querySelectorAll('form');
@@ -524,7 +522,7 @@
           // Skip buttons and hidden fields
           if (['submit', 'button', 'hidden'].includes(input.type)) return;
 
-          // Check if field value is "llm-fill"
+          // Check if field value is "##"
           if (input.value && input.value.trim() === CONFIG.llmTrigger) {
             const fieldId = this.generateFieldId(input);
             const label = this.getFieldLabel(input);
@@ -536,7 +534,7 @@
               label: label,
               placeholder: input.placeholder || '',
               required: input.required || false,
-              value: ''  // Clear the llm-fill placeholder
+              value: ''  // Clear the ## placeholder
             };
 
             // Handle select options
@@ -864,11 +862,11 @@
       Logger.clear();
 
       try {
-        // Scan page for fields marked with "llm-fill"
+        // Scan page for fields marked with "##"
         const llmResult = FormHandler.getLLMMarkedFields();
 
         if (!llmResult || llmResult.fields.length === 0) {
-          alert('No fields marked with "llm-fill" found!\n\nType "llm-fill" in any field you want AI to complete.');
+          alert('No fields marked with "##" found!\n\nType "##" in any field you want AI to complete.');
           return;
         }
 
@@ -945,9 +943,86 @@
   };
 
   // ============================================================================
+  // FLOATING TOGGLE BUTTON
+  // ============================================================================
+
+  const FloatingButton = {
+    button: null,
+
+    create() {
+      // Check if button already exists
+      if (document.getElementById('autofill-toggle-btn')) {
+        Logger.log('Floating button already exists');
+        return;
+      }
+
+      this.button = document.createElement('button');
+      this.button.id = 'autofill-toggle-btn';
+      this.button.innerHTML = '✨';
+      this.button.title = 'Toggle Autofill Menu';
+
+      // Styles
+      Object.assign(this.button.style, {
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        width: '56px',
+        height: '56px',
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+        border: '2px solid rgba(255,255,255,0.3)',
+        color: 'white',
+        fontSize: '24px',
+        cursor: 'pointer',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        zIndex: '999998',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      });
+
+      // Hover effect
+      this.button.onmouseenter = () => {
+        this.button.style.transform = 'scale(1.1)';
+        this.button.style.boxShadow = '0 6px 16px rgba(0,0,0,0.4)';
+      };
+      this.button.onmouseleave = () => {
+        this.button.style.transform = 'scale(1)';
+        this.button.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+      };
+
+      // Click handler
+      this.button.onclick = () => {
+        const modal = document.getElementById('autofill-modal');
+        if (modal) {
+          UI.closeModal();
+        } else {
+          UI.showMainMenu();
+        }
+      };
+
+      document.body.appendChild(this.button);
+      Logger.log('✨ Floating toggle button created');
+    },
+
+    remove() {
+      if (this.button) {
+        this.button.remove();
+        this.button = null;
+      }
+    }
+  };
+
+  // ============================================================================
   // INITIALIZE
   // ============================================================================
 
+  // Create floating button (only once)
+  FloatingButton.create();
+
+  // Show menu on first load
   UI.showMainMenu();
 
 })();

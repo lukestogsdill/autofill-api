@@ -136,6 +136,36 @@ Output ONLY the answer text (no explanation).`,
 		context["summary"], context["skills"])
 }
 
+// ColdMessagePrompt creates the prompt for generating a cold outreach message
+func ColdMessagePrompt(experienceSummary string, keyAchievements []string, job JobInfo) string {
+	achievements := strings.Join(keyAchievements, "\n- ")
+
+	return fmt.Sprintf(`Write a cold outreach message for this job opportunity.
+
+Job: %s at %s
+Job description: %s
+
+Your background:
+%s
+
+Key achievements:
+- %s
+
+Message requirements:
+- Very concise: 3-4 short paragraphs maximum
+- Professional but friendly tone
+- Start with a compelling hook about why you're reaching out
+- Highlight 1-2 most relevant achievements that match the role
+- Express genuine interest in the company/role
+- Include a clear call-to-action (request for a brief chat/interview)
+- NO generic templates - make it specific and personal
+- Keep it conversational, not salesy
+
+Output the message text only (no subject line needed).`,
+		job.Title, job.Company, truncate(job.Description, 1500),
+		experienceSummary, achievements)
+}
+
 // truncate limits string length for token management
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
