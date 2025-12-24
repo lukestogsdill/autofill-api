@@ -1,22 +1,21 @@
-(function(){
-  const API_BASE = API_URL.replace('/api/fill', '');
+(function() {
+  'use strict';
 
-  let collectedFields = [];
-  let fieldElements = new Map();
+  // ============================================================================
+  // CONFIGURATION
+  // ============================================================================
 
-  // Simple debug logging - just collect and show in alert
-  let debugLogs = [];
+  const CONFIG = {
+    apiBase: API_URL.replace('/api/fill', ''),
+    llmTrigger: 'llm-fill',  // Type this in a form field to trigger LLM for that field
+    debugMode: true
+  };
 
-  function log(...args) {
-    console.log(...args);
-    const logEntry = args.map(arg =>
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ');
-    debugLogs.push(logEntry);
-  }
+  // ============================================================================
+  // STYLES
+  // ============================================================================
 
-  // Styles
-  const styles = {
+  const STYLES = {
     modal: `
       position: fixed;
       top: 0;
@@ -141,581 +140,88 @@
     `
   };
 
-  // Close modal
-  function closeModal() {
-    const modal = document.getElementById('autofill-modal');
-    if (modal) modal.remove();
-  }
+  // ============================================================================
+  // DEBUG LOGGER
+  // ============================================================================
 
-  // Collect form fields
-  function collectFormFields() {
-    log('🟡 collectFormFields: Starting...');
-    const fields = [];
-    const elements = new Map();
+  const Logger = {
+    logs: [],
 
-    const forms = document.querySelectorAll('form');
-    log('🟡 collectFormFields: Found', forms.length, 'forms');
-
-    if (!forms.length) {
-      alert('No forms found on this page!');
-      return null;
-    }
-
-    forms.forEach(form => {
-      const inputs = form.querySelectorAll('input, textarea, select');
-      inputs.forEach(input => {
-        if (input.type === 'submit' || input.type === 'button' || input.type === 'hidden') return;
-
-        const fieldId = input.name || input.id || generateFieldId(input);
-        const label = getFieldLabel(input);
-
-        const field = {
-          id: fieldId,
-          name: input.name || '',
-          type: input.type || input.tagName.toLowerCase(),
-          label: label,
-          placeholder: input.placeholder || '',
-          required: input.required || false,
-          value: input.value || '',
-          element: input
-        };
-
-        if (input.tagName === 'SELECT') {
-          field.options = Array.from(input.options).map(o => ({
-            value: o.value,
-            text: o.text
-          }));
-        }
-
-        if (input.type === 'radio') {
-          const radioGroup = fields.find(f => f.name === input.name && f.type === 'radio');
-          if (radioGroup) {
-            radioGroup.options.push({ value: input.value, text: getFieldLabel(input) || input.value });
-            radioGroup.elements.push(input);
-          } else {
-            field.options = [{ value: input.value, text: getFieldLabel(input) || input.value }];
-            field.elements = [input];
-            fields.push(field);
-            elements.set(fieldId, input);
-          }
-          return;
-        }
-
-        fields.push(field);
-        elements.set(fieldId, input);
-      });
-    });
-
-    log('🟡 collectFormFields: Collected', fields.length, 'fields');
-    log('🟡 collectFormFields: Field IDs:', fields.map(f => f.id));
-    return { fields, elements };
-  }
-
-  function generateFieldId(input) {
-    const label = getFieldLabel(input);
-    return label.toLowerCase().replace(/[^a-z0-9]/g, '_') || `field_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  function getFieldLabel(input) {
-    if (input.id) {
-      const label = document.querySelector(`label[for="${input.id}"]`);
-      if (label) return label.textContent.trim();
-    }
-
-    const parentLabel = input.closest('label');
-    if (parentLabel) {
-      return parentLabel.textContent.replace(input.value, '').trim();
-    }
-
-    const prevText = input.previousElementSibling;
-    if (prevText && prevText.textContent) {
-      return prevText.textContent.trim();
-    }
-
-    if (input.getAttribute('aria-label')) {
-      return input.getAttribute('aria-label');
-    }
-
-    return input.placeholder || input.name || '';
-  }
-
-  // Fill form with data
-  function fillForm(data) {
-    log('🟢 fillForm: Starting with data:', data);
-    log('🟢 fillForm: fieldElements has', fieldElements.size, 'elements');
-    let filledCount = 0;
-
-    fieldElements.forEach((element, fieldId) => {
-      let value = data[fieldId];
-
-      // Special case: ALL password type fields get the password constant
-      if (element.type === 'password') {
-        // Find password constant in data (case-insensitive)
-        const passwordKey = Object.keys(data).find(key => key.toLowerCase() === 'password');
-        if (passwordKey) {
-          value = data[passwordKey];
-          log(`🔑 fillForm: Password field "${fieldId}" (type=password) filled with password constant`);
-        } else {
-          log(`🔴 fillForm: Password field "${fieldId}" detected but no Password key in constants!`);
-        }
+    log(...args) {
+      console.log(...args);
+      if (CONFIG.debugMode) {
+        const logEntry = args.map(arg =>
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+        this.logs.push(logEntry);
       }
+    },
 
-      log(`🟢 fillForm: Checking field "${fieldId}" - value from data:`, value);
-
-      if (!value) {
-        log(`🟡 fillForm: Skipping field "${fieldId}" - no value in data`);
-        return;
+    show() {
+      if (this.logs.length > 0) {
+        alert('DEBUG LOG:\n' + this.logs.join('\n'));
+        this.logs = [];
       }
+    },
 
-      if (element.tagName === 'SELECT') {
-        log(`🟢 fillForm: Field "${fieldId}" is SELECT, filling with:`, value);
-        for (let option of element.options) {
-          if (option.value === value || option.text.toLowerCase().includes(value.toLowerCase())) {
-            element.value = option.value;
-            filledCount++;
-            log(`✅ fillForm: Filled SELECT "${fieldId}" with:`, option.value);
-            break;
-          }
-        }
-      } else if (element.type === 'checkbox') {
-        log(`🟢 fillForm: Field "${fieldId}" is CHECKBOX, filling with:`, value);
-        element.checked = value === true || value === 'true' || value === 'yes';
-        filledCount++;
-        log(`✅ fillForm: Filled CHECKBOX "${fieldId}" to:`, element.checked);
-      } else if (element.type === 'radio') {
-        log(`🟢 fillForm: Field "${fieldId}" is RADIO, filling with:`, value);
-        const field = collectedFields.find(f => f.id === fieldId);
-        if (field && field.elements) {
-          field.elements.forEach(radio => {
-            if (radio.value === value || radio.value.toLowerCase().includes(value.toLowerCase())) {
-              radio.checked = true;
-              filledCount++;
-              log(`✅ fillForm: Filled RADIO "${fieldId}" with:`, value);
-            }
-          });
-        }
-      } else {
-        log(`🟢 fillForm: Field "${fieldId}" is ${element.type}, filling with:`, value);
-        element.value = value;
-        filledCount++;
-        log(`✅ fillForm: Filled "${fieldId}" with:`, value);
-      }
-
-      element.dispatchEvent(new Event('input', { bubbles: true }));
-      element.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-
-    log(`🟢 fillForm: Completed. Filled ${filledCount} fields total`);
-    return filledCount;
-  }
-
-  // Fetch job context
-  async function fetchJobContext() {
-    try {
-      const response = await fetch(API_BASE + '/api/context');
-      if (!response.ok) throw new Error('Failed to fetch job context');
-      return await response.json();
-    } catch (error) {
-      log('Error fetching job context:', error);
-      return { title: 'Unknown', company: 'Unknown', url: window.location.href };
+    clear() {
+      this.logs = [];
     }
-  }
+  };
 
-  // Fill with constants only
-  async function fillWithConstants() {
-    log('🔵 fillWithConstants: Starting...');
-    const result = collectFormFields();
-    if (!result) {
-      log('🔴 fillWithConstants: collectFormFields returned null');
-      return;
-    }
+  // ============================================================================
+  // HTML TEMPLATES
+  // ============================================================================
 
-    collectedFields = result.fields;
-    fieldElements = result.elements;
-    log('🔵 fillWithConstants: Collected', collectedFields.length, 'fields');
-
-    try {
-      const context = await fetchJobContext();
-
-      // Filter out fields that already have values
-      const emptyFields = collectedFields.filter(field => {
-        if (field.type === 'checkbox' || field.type === 'radio') {
-          return true; // Always include checkboxes/radios
-        }
-        return !field.value || field.value.trim() === '';
-      });
-
-      if (emptyFields.length === 0) {
-        alert('All fields are already filled!');
-        closeModal();
-        return;
-      }
-
-      const cleanFields = emptyFields.map(field => ({
-        id: field.id,
-        name: field.name,
-        type: field.type,
-        label: field.label,
-        placeholder: field.placeholder,
-        required: field.required,
-        value: field.value,
-        options: field.options
-      }));
-
-      log('🔵 fillWithConstants: Sending', cleanFields.length, 'fields to API');
-
-      const response = await fetch(API_BASE + '/api/fill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: cleanFields,
-          job_context: context,
-          constants_only: true
-        })
-      });
-
-      log('🔵 fillWithConstants: Response status:', response.status);
-
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-      const data = await response.json();
-      log('🔵 fillWithConstants: Received data:', data);
-
-      // Fetch constants directly to ensure Password is available
-      const constResponse = await fetch(API_BASE + '/api/constants');
-      const constants = constResponse.ok ? await constResponse.json() : {};
-      log('🔵 fillWithConstants: Fetched constants:', constants);
-
-      // Merge constants with API response so Password is always available
-      const mergedData = { ...constants, ...(data.fields || data) };
-      log('🔵 fillWithConstants: Merged data:', mergedData);
-
-      const filledCount = fillForm(mergedData);
-      log('🔵 fillWithConstants: Filled', filledCount, 'fields');
-
-      alert(`✓ Filled ${filledCount} fields with constants!`);
-      closeModal();
-    } catch (error) {
-      alert(`Error: ${error.message}`);
-    } finally {
-      alert('DEBUG LOG:\n' + debugLogs.join('\n'));
-      debugLogs = [];
-    }
-  }
-
-  // Fill with LLM
-  async function fillWithLLM() {
-    const result = collectFormFields();
-    if (!result) return;
-
-    collectedFields = result.fields;
-    fieldElements = result.elements;
-
-    try {
-      const context = await fetchJobContext();
-
-      // Filter out fields that already have values
-      const emptyFields = collectedFields.filter(field => {
-        if (field.type === 'checkbox' || field.type === 'radio') {
-          return true; // Always include checkboxes/radios
-        }
-        return !field.value || field.value.trim() === '';
-      });
-
-      if (emptyFields.length === 0) {
-        alert('All fields are already filled!');
-        closeModal();
-        return;
-      }
-
-      const cleanFields = emptyFields.map(field => ({
-        id: field.id,
-        name: field.name,
-        type: field.type,
-        label: field.label,
-        placeholder: field.placeholder,
-        required: field.required,
-        value: field.value,
-        options: field.options
-      }));
-
-      const response = await fetch(API_BASE + '/api/fill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: cleanFields,
-          job_context: context
-        })
-      });
-
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-      const data = await response.json();
-
-      // Fetch constants to ensure Password is available
-      const constResponse = await fetch(API_BASE + '/api/constants');
-      const constants = constResponse.ok ? await constResponse.json() : {};
-
-      // Merge constants with API response
-      const mergedData = { ...constants, ...(data.fields || data) };
-
-      const filledCount = fillForm(mergedData);
-
-      alert(`✓ Filled ${filledCount} fields with LLM!`);
-      closeModal();
-    } catch (error) {
-      alert(`Error: ${error.message}`);
-    } finally {
-      alert('DEBUG LOG:\n' + debugLogs.join('\n'));
-      debugLogs = [];
-    }
-  }
-
-  // Fill from most recent saved response
-  async function fillFromRecent() {
-    log('🔵 fillFromRecent: Starting...');
-
-    try {
-      log('🔵 fillFromRecent: Fetching from', API_BASE + '/api/recent');
-      const response = await fetch(API_BASE + '/api/recent');
-      log('🔵 fillFromRecent: Response status:', response.status);
-
-      if (!response.ok) {
-        const error = await response.json();
-        log('🔴 fillFromRecent: Error response:', error);
-        throw new Error(error.error || 'Failed to fetch recent response');
-      }
-
-      const data = await response.json();
-      log('🔵 fillFromRecent: Received data:', data);
-
-      // The response should have a "fields" object with field IDs as keys
-      if (data.fields) {
-        log('🔵 fillFromRecent: Fields found:', Object.keys(data.fields).length, 'fields');
-        log('🔵 fillFromRecent: Field data:', data.fields);
-        log('🔵 fillFromRecent: Current fieldElements size:', fieldElements.size);
-        log('🔵 fillFromRecent: Current fieldElements keys:', Array.from(fieldElements.keys()));
-
-        // Fetch constants to ensure Password is available
-        const constResponse = await fetch(API_BASE + '/api/constants');
-        const constants = constResponse.ok ? await constResponse.json() : {};
-        log('🔵 fillFromRecent: Fetched constants:', constants);
-
-        // Merge constants with response data
-        const mergedData = { ...constants, ...data.fields };
-        log('🔵 fillFromRecent: Merged data:', mergedData);
-
-        const filledCount = fillForm(mergedData);
-        log('🔵 fillFromRecent: Filled', filledCount, 'fields');
-
-        if (filledCount === 0) {
-          alert('No fields were filled. Check console for details.');
-        } else {
-          alert(`Filled ${filledCount} fields from recent response`);
-        }
-        closeModal();
-      } else {
-        log('🔴 fillFromRecent: No fields in response. Data structure:', data);
-        throw new Error('Invalid response format - no fields found');
-      }
-    } catch (error) {
-      log('🔴 fillFromRecent: Error:', error);
-      alert(`Error: ${error.message}`);
-    } finally {
-      alert('DEBUG LOG:\n' + debugLogs.join('\n'));
-      debugLogs = [];
-    }
-  }
-
-  // Fill all (constants + LLM)
-  async function fillAll() {
-    log('🔵 fillAll: Starting...');
-    const result = collectFormFields();
-    if (!result) {
-      log('🔴 fillAll: collectFormFields returned null');
-      return;
-    }
-
-    collectedFields = result.fields;
-    fieldElements = result.elements;
-    log('🔵 fillAll: Collected', collectedFields.length, 'fields');
-
-    try {
-      // Filter out fields that already have values
-      const emptyFields = collectedFields.filter(field => {
-        if (field.type === 'checkbox' || field.type === 'radio') {
-          return true; // Always include checkboxes/radios
-        }
-        return !field.value || field.value.trim() === '';
-      });
-
-      if (emptyFields.length === 0) {
-        alert('All fields are already filled!');
-        closeModal();
-        return;
-      }
-
-      // First fetch constants
-      const constResponse = await fetch(API_BASE + '/api/constants');
-      const constants = constResponse.ok ? await constResponse.json() : {};
-
-      // Fill with constants first
-      fillForm(constants);
-
-      // Then fill remaining with LLM
-      const context = await fetchJobContext();
-
-      const cleanFields = emptyFields.map(field => ({
-        id: field.id,
-        name: field.name,
-        type: field.type,
-        label: field.label,
-        placeholder: field.placeholder,
-        required: field.required,
-        value: field.value,
-        options: field.options
-      }));
-
-      const response = await fetch(API_BASE + '/api/fill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: cleanFields,
-          job_context: context
-        })
-      });
-
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-      const data = await response.json();
-
-      // Merge constants with LLM response
-      const mergedData = { ...constants, ...(data.fields || data) };
-      const filledCount = fillForm(mergedData);
-
-      alert(`✓ Filled all fields!`);
-      closeModal();
-    } catch (error) {
-      alert(`Error: ${error.message}`);
-    } finally {
-      alert('DEBUG LOG:\n' + debugLogs.join('\n'));
-      debugLogs = [];
-    }
-  }
-
-  // Show settings (manage constants)
-  async function showSettings() {
-    const existing = document.getElementById('autofill-modal');
-    if (existing) existing.remove();
-
-    const modal = document.createElement('div');
-    modal.id = 'autofill-modal';
-    modal.style.cssText = styles.modal;
-
-    const content = document.createElement('div');
-    content.style.cssText = styles.content;
-
-    const header = document.createElement('div');
-    header.style.cssText = styles.header;
-
-    const title = document.createElement('h2');
-    title.style.cssText = styles.title;
-    title.textContent = 'Constants';
-    header.appendChild(title);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = styles.closeBtn;
-    closeBtn.innerHTML = '✕';
-    closeBtn.addEventListener('click', showMainMenu);
-    header.appendChild(closeBtn);
-
-    const body = document.createElement('div');
-    body.style.cssText = 'padding: 0; overflow: hidden; display: flex; flex-direction: column; height: 500px;';
-    body.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.6); padding: 20px;">Loading...</div>';
-
-    content.appendChild(header);
-    content.appendChild(body);
-    modal.appendChild(content);
-    document.body.appendChild(modal);
-
-    try {
-      const response = await fetch(API_BASE + '/api/constants');
-      if (!response.ok) throw new Error('Failed to load constants');
-
-      const constants = await response.json();
-      body.innerHTML = '';
-
-      // Top bar with Save and Add buttons
-      const topBar = document.createElement('div');
-      topBar.style.cssText = 'padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; gap: 12px;';
-
-      const saveBtn = document.createElement('button');
-      saveBtn.style.cssText = styles.button + styles.buttonPrimary + 'flex: 1; margin-bottom: 0; padding: 12px 16px;';
-      saveBtn.innerHTML = '<span>Save</span><span>💾</span>';
-      saveBtn.id = 'save-constants-btn';
-      topBar.appendChild(saveBtn);
-
-      const addBtn = document.createElement('button');
-      addBtn.style.cssText = styles.button + styles.buttonSuccess + 'flex: 1; margin-bottom: 0; padding: 12px 16px;';
-      addBtn.innerHTML = '<span>Add Field</span><span>➕</span>';
-      addBtn.addEventListener('click', () => {
-        const item = document.createElement('div');
-        item.style.cssText = styles.infoBox + 'display: flex; gap: 8px; align-items: start;';
-        item.innerHTML = `
-          <div style="flex: 1;">
-            <input
-              type="text"
-              data-new-key
-              placeholder="field_name"
-              style="${styles.fieldInput} margin-top: 0; font-family: monospace; font-size: 12px;"
-            />
-            <input
-              type="text"
-              data-new-value
-              placeholder="value"
-              style="${styles.fieldInput}"
-            />
+  const Templates = {
+    mainMenu() {
+      return `
+        <div id="autofill-modal" style="${STYLES.modal}">
+          <div style="${STYLES.content}">
+            <div style="${STYLES.header}">
+              <h2 style="${STYLES.title}">Autofill</h2>
+              <div style="display: flex; gap: 8px;">
+                <button id="logs-btn" style="${STYLES.settingsBtn}">📋</button>
+                <button id="settings-btn" style="${STYLES.settingsBtn}">⚙️</button>
+                <button id="close-btn" style="${STYLES.closeBtn}">✕</button>
+              </div>
+            </div>
+            <div style="${STYLES.body}">
+              <div style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                <div style="font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.4;">
+                  <strong style="color: #60a5fa;">Workflow:</strong><br/>
+                  1. Fill Constants → 2. Type "llm-fill" in empty fields → 3. Fill LLM Fields → 4. Save to Doc
+                </div>
+              </div>
+              <button id="fill-constants-btn" style="${STYLES.button}${STYLES.buttonPrimary}">
+                <span>1. Fill Constants</span>
+                <span style="font-size: 20px;">📝</span>
+              </button>
+              <button id="fill-llm-btn" style="${STYLES.button}${STYLES.buttonSuccess}">
+                <span>2. Fill LLM Fields</span>
+                <span style="font-size: 20px;">⚡</span>
+              </button>
+              <button id="save-doc-btn" style="${STYLES.button}${STYLES.buttonWarning}">
+                <span>3. Save to Google Doc</span>
+                <span style="font-size: 20px;">📄</span>
+              </button>
+            </div>
           </div>
-          <button
-            data-remove
-            style="
-              width: 32px;
-              height: 32px;
-              border-radius: 8px;
-              background: rgba(239, 68, 68, 0.2);
-              border: 1px solid rgba(239, 68, 68, 0.3);
-              color: #ef4444;
-              cursor: pointer;
-              font-size: 18px;
-              margin-top: 0;
-            "
-          >✕</button>
-        `;
-        const removeBtn = item.querySelector('[data-remove]');
-        removeBtn.addEventListener('click', () => item.remove());
-        scrollContainer.appendChild(item);
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      });
-      topBar.appendChild(addBtn);
+        </div>
+      `;
+    },
 
-      body.appendChild(topBar);
-
-      // Single scroll container
-      const scrollContainer = document.createElement('div');
-      scrollContainer.style.cssText = 'flex: 1; overflow-y: auto; padding: 24px;';
-      scrollContainer.id = 'constants-scroll';
-
-      Object.entries(constants).forEach(([key, value]) => {
-        const item = document.createElement('div');
-        item.style.cssText = styles.infoBox + 'display: flex; gap: 8px; align-items: start;';
-        item.innerHTML = `
+    settingsMenu(constants) {
+      const constantsHTML = Object.entries(constants).map(([key, value]) => `
+        <div style="${STYLES.infoBox} display: flex; gap: 8px; align-items: start;">
           <div style="flex: 1;">
-            <div style="${styles.infoLabel}">${key.replace(/_/g, ' ').toUpperCase()}</div>
+            <div style="${STYLES.infoLabel}">${key.replace(/_/g, ' ').toUpperCase()}</div>
             <input
               type="text"
               data-key="${key}"
               value="${value}"
-              style="${styles.fieldInput}"
+              placeholder="constant value"
+              style="${STYLES.fieldInput}"
             />
           </div>
           <button
@@ -732,133 +238,716 @@
               margin-top: 20px;
             "
           >✕</button>
-        `;
-        const removeBtn = item.querySelector('[data-remove]');
-        removeBtn.addEventListener('click', () => item.remove());
-        scrollContainer.appendChild(item);
+        </div>
+      `).join('');
+
+      return `
+        <div id="autofill-modal" style="${STYLES.modal}">
+          <div style="${STYLES.content}">
+            <div style="${STYLES.header}">
+              <h2 style="${STYLES.title}">Constants</h2>
+              <button id="close-btn" style="${STYLES.closeBtn}">✕</button>
+            </div>
+            <div style="padding: 0; overflow: hidden; display: flex; flex-direction: column; height: 500px;">
+              <div style="padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; gap: 12px;">
+                <button id="save-constants-btn" style="${STYLES.button}${STYLES.buttonPrimary} flex: 1; margin-bottom: 0; padding: 12px 16px;">
+                  <span>Save</span><span>💾</span>
+                </button>
+                <button id="add-field-btn" style="${STYLES.button}${STYLES.buttonSuccess} flex: 1; margin-bottom: 0; padding: 12px 16px;">
+                  <span>Add Field</span><span>➕</span>
+                </button>
+              </div>
+              <div id="constants-scroll" style="flex: 1; overflow-y: auto; padding: 24px;">
+                ${constantsHTML}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    },
+
+    newConstantField() {
+      return `
+        <div style="${STYLES.infoBox} display: flex; gap: 8px; align-items: start;">
+          <div style="flex: 1;">
+            <input
+              type="text"
+              data-new-key
+              placeholder="field_name"
+              style="${STYLES.fieldInput} margin-top: 0; font-family: monospace; font-size: 12px;"
+            />
+            <input
+              type="text"
+              data-new-value
+              placeholder="value"
+              style="${STYLES.fieldInput}"
+            />
+          </div>
+          <button
+            data-remove
+            style="
+              width: 32px;
+              height: 32px;
+              border-radius: 8px;
+              background: rgba(239, 68, 68, 0.2);
+              border: 1px solid rgba(239, 68, 68, 0.3);
+              color: #ef4444;
+              cursor: pointer;
+              font-size: 18px;
+              margin-top: 0;
+            "
+          >✕</button>
+        </div>
+      `;
+    },
+
+    logsView(logs) {
+      const logsHTML = logs.length > 0
+        ? logs.map(log => `<div style="margin-bottom: 8px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 6px; font-size: 12px; font-family: monospace; word-wrap: break-word;">${log}</div>`).join('')
+        : '<div style="color: rgba(255,255,255,0.5); text-align: center; padding: 20px;">No logs yet</div>';
+
+      return `
+        <div id="autofill-modal" style="${STYLES.modal}">
+          <div style="${STYLES.content}">
+            <div style="${STYLES.header}">
+              <h2 style="${STYLES.title}">Debug Logs</h2>
+              <div style="display: flex; gap: 8px;">
+                <button id="clear-logs-btn" style="${STYLES.settingsBtn}">🗑️</button>
+                <button id="close-btn" style="${STYLES.closeBtn}">✕</button>
+              </div>
+            </div>
+            <div style="padding: 24px; max-height: 500px; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+              ${logsHTML}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  };
+
+  // ============================================================================
+  // API SERVICE
+  // ============================================================================
+
+  const API = {
+    async getConstants() {
+      const response = await fetch(`${CONFIG.apiBase}/api/constants`);
+      if (!response.ok) throw new Error('Failed to fetch constants');
+      return await response.json();
+    },
+
+    async saveConstants(constants) {
+      const response = await fetch(`${CONFIG.apiBase}/api/constants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(constants)
+      });
+      if (!response.ok) throw new Error('Failed to save constants');
+      return await response.json();
+    },
+
+    async getJobContext() {
+      try {
+        const response = await fetch(`${CONFIG.apiBase}/api/context`);
+        if (!response.ok) throw new Error('Failed to fetch job context');
+        return await response.json();
+      } catch (error) {
+        Logger.log('Error fetching job context:', error);
+        return { title: 'Unknown', company: 'Unknown', url: window.location.href };
+      }
+    },
+
+    async fillConstants(fields) {
+      const response = await fetch(`${CONFIG.apiBase}/api/fill-constants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields })
+      });
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      return await response.json();
+    },
+
+    async fillLLM(fields, context) {
+      const response = await fetch(`${CONFIG.apiBase}/api/fill-llm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields, job_context: context })
+      });
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      return await response.json();
+    },
+
+    async saveToGoogleDoc(formData) {
+      const response = await fetch(`${CONFIG.apiBase}/api/save-doc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (!response.ok) throw new Error(`Failed to save to Google Doc: ${response.status}`);
+      return await response.json();
+    }
+  };
+
+  // ============================================================================
+  // FORM FIELD HANDLER
+  // ============================================================================
+
+  const FormHandler = {
+    collectFields() {
+      Logger.log('🔍 Collecting form fields...');
+      const fields = [];
+      const elements = new Map();
+      const forms = document.querySelectorAll('form');
+
+      Logger.log(`Found ${forms.length} forms`);
+
+      if (!forms.length) {
+        alert('No forms found on this page!');
+        return null;
+      }
+
+      forms.forEach(form => {
+        const inputs = form.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+          // Skip buttons and hidden fields
+          if (['submit', 'button', 'hidden'].includes(input.type)) return;
+
+          const fieldId = this.generateFieldId(input);
+          const label = this.getFieldLabel(input);
+
+          const field = {
+            id: fieldId,
+            name: input.name || '',
+            type: input.type || input.tagName.toLowerCase(),
+            label: label,
+            placeholder: input.placeholder || '',
+            required: input.required || false,
+            value: input.value || ''
+          };
+
+          // Handle select options
+          if (input.tagName === 'SELECT') {
+            field.options = Array.from(input.options).map(o => ({
+              value: o.value,
+              text: o.text
+            }));
+          }
+
+          // Handle radio buttons (group them)
+          if (input.type === 'radio') {
+            const existingGroup = fields.find(f => f.name === input.name && f.type === 'radio');
+            if (existingGroup) {
+              existingGroup.options.push({
+                value: input.value,
+                text: this.getFieldLabel(input) || input.value
+              });
+              existingGroup.elements.push(input);
+            } else {
+              field.options = [{
+                value: input.value,
+                text: this.getFieldLabel(input) || input.value
+              }];
+              field.elements = [input];
+              fields.push(field);
+              elements.set(fieldId, input);
+            }
+            return;
+          }
+
+          fields.push(field);
+          elements.set(fieldId, input);
+        });
       });
 
-      body.appendChild(scrollContainer);
+      Logger.log(`✅ Collected ${fields.length} fields`);
+      return { fields, elements };
+    },
 
-      // Save button handler
-      saveBtn.addEventListener('click', async () => {
-        const inputs = scrollContainer.querySelectorAll('input[data-key]');
-        const updated = {};
+    generateFieldId(input) {
+      if (input.name) return input.name;
+      if (input.id) return input.id;
+
+      const label = this.getFieldLabel(input);
+      return label.toLowerCase().replace(/[^a-z0-9]/g, '_') ||
+             `field_${Math.random().toString(36).substr(2, 9)}`;
+    },
+
+    getFieldLabel(input) {
+      // Try label[for="id"]
+      if (input.id) {
+        const label = document.querySelector(`label[for="${input.id}"]`);
+        if (label) return label.textContent.trim();
+      }
+
+      // Try parent label
+      const parentLabel = input.closest('label');
+      if (parentLabel) {
+        return parentLabel.textContent.replace(input.value, '').trim();
+      }
+
+      // Try previous sibling
+      const prevText = input.previousElementSibling;
+      if (prevText && prevText.textContent) {
+        return prevText.textContent.trim();
+      }
+
+      // Try aria-label
+      if (input.getAttribute('aria-label')) {
+        return input.getAttribute('aria-label');
+      }
+
+      return input.placeholder || input.name || '';
+    },
+
+    getEmptyFields(fields) {
+      return fields.filter(field => {
+        if (field.type === 'checkbox' || field.type === 'radio') {
+          return true; // Always include
+        }
+        return !field.value || field.value.trim() === '';
+      });
+    },
+
+    /**
+     * Get fields that have been marked with "llm-fill" by the user
+     * Re-scans the page to get current values
+     */
+    getLLMMarkedFields() {
+      Logger.log('🔍 Scanning for fields marked with "llm-fill"...');
+      const llmFields = [];
+      const elements = new Map();
+      const forms = document.querySelectorAll('form');
+
+      forms.forEach(form => {
+        const inputs = form.querySelectorAll('input, textarea, select');
         inputs.forEach(input => {
-          const key = input.getAttribute('data-key');
-          if (key) {
-            updated[key] = input.value;
+          // Skip buttons and hidden fields
+          if (['submit', 'button', 'hidden'].includes(input.type)) return;
+
+          // Check if field value is "llm-fill"
+          if (input.value && input.value.trim() === CONFIG.llmTrigger) {
+            const fieldId = this.generateFieldId(input);
+            const label = this.getFieldLabel(input);
+
+            const field = {
+              id: fieldId,
+              name: input.name || '',
+              type: input.type || input.tagName.toLowerCase(),
+              label: label,
+              placeholder: input.placeholder || '',
+              required: input.required || false,
+              value: ''  // Clear the llm-fill placeholder
+            };
+
+            // Handle select options
+            if (input.tagName === 'SELECT') {
+              field.options = Array.from(input.options).map(o => ({
+                value: o.value,
+                text: o.text
+              }));
+            }
+
+            llmFields.push(field);
+            elements.set(fieldId, input);
+            Logger.log(`✓ Found LLM field: "${label}" (${fieldId})`);
           }
         });
+      });
 
-        // Add new constants
-        const newKeys = scrollContainer.querySelectorAll('input[data-new-key]');
-        const newValues = scrollContainer.querySelectorAll('input[data-new-value]');
-        newKeys.forEach((keyInput, idx) => {
-          const key = keyInput.value.trim();
-          const value = newValues[idx].value.trim();
-          if (key && value) {
-            updated[key] = value;
-          }
-        });
+      Logger.log(`✅ Found ${llmFields.length} fields marked for LLM`);
+      return { fields: llmFields, elements };
+    }
+  };
 
-        try {
-          saveBtn.innerHTML = '<span>Saving...</span>';
-          saveBtn.disabled = true;
+  // ============================================================================
+  // FUZZY MATCHER
+  // ============================================================================
 
-          const saveResponse = await fetch(API_BASE + '/api/constants', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updated)
+  const FuzzyMatcher = {
+    /**
+     * Match form fields to constants using fuzzy matching on labels, names, placeholders
+     */
+    matchFieldsToConstants(fields, constants) {
+      Logger.log('🔗 Fuzzy matching fields to constants...');
+      const matches = {};
+
+      fields.forEach(field => {
+        const searchTerms = [
+          field.label,
+          field.name,
+          field.placeholder,
+          field.id
+        ].filter(Boolean).map(s => s.toLowerCase());
+
+        // Try to find best matching constant
+        let bestMatch = null;
+        let bestScore = 0;
+
+        Object.entries(constants).forEach(([key, value]) => {
+          const constantKey = key.toLowerCase().replace(/_/g, ' ');
+
+          searchTerms.forEach(term => {
+            const score = this.similarityScore(term, constantKey);
+            if (score > bestScore && score > 0.5) { // threshold
+              bestScore = score;
+              bestMatch = { key, value };
+            }
           });
+        });
 
-          if (!saveResponse.ok) throw new Error('Failed to save');
-
-          saveBtn.innerHTML = '<span>✓ Saved!</span>';
-          saveBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-
-          setTimeout(() => {
-            showMainMenu();
-          }, 1000);
-        } catch (error) {
-          saveBtn.innerHTML = '<span>Error</span>';
-          saveBtn.disabled = false;
-          setTimeout(() => {
-            saveBtn.innerHTML = '<span>Save</span><span>💾</span>';
-            saveBtn.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
-          }, 2000);
+        if (bestMatch) {
+          matches[field.id] = bestMatch.value;
+          Logger.log(`✓ Matched "${field.id}" to "${bestMatch.key}" (score: ${bestScore.toFixed(2)})`);
         }
       });
 
-    } catch (error) {
-      body.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 20px;">Error: ${error.message}</div>`;
+      return matches;
+    },
+
+    /**
+     * Simple similarity score (0-1) based on common words and substring matching
+     */
+    similarityScore(str1, str2) {
+      str1 = str1.toLowerCase();
+      str2 = str2.toLowerCase();
+
+      // Exact match
+      if (str1 === str2) return 1.0;
+
+      // Substring match
+      if (str1.includes(str2) || str2.includes(str1)) return 0.9;
+
+      // Common words
+      const words1 = str1.split(/\s+/);
+      const words2 = str2.split(/\s+/);
+      const commonWords = words1.filter(w => words2.includes(w));
+
+      if (commonWords.length > 0) {
+        return 0.7 * (commonWords.length / Math.max(words1.length, words2.length));
+      }
+
+      // Levenshtein-like: count common characters
+      const common = [...str1].filter(c => str2.includes(c)).length;
+      return 0.5 * (common / Math.max(str1.length, str2.length));
     }
-  }
+  };
 
-  // Show main menu
-  function showMainMenu() {
-    const existing = document.getElementById('autofill-modal');
-    if (existing) existing.remove();
+  // ============================================================================
+  // FORM FILLER
+  // ============================================================================
 
-    const modal = document.createElement('div');
-    modal.id = 'autofill-modal';
-    modal.style.cssText = styles.modal;
+  const FormFiller = {
+    fill(fieldElements, data, collectedFields) {
+      Logger.log('📝 Filling form with data...');
+      let filledCount = 0;
 
-    const content = document.createElement('div');
-    content.style.cssText = styles.content;
+      fieldElements.forEach((element, fieldId) => {
+        let value = data[fieldId];
 
-    const header = document.createElement('div');
-    header.style.cssText = styles.header;
+        // Special handling: password fields
+        if (element.type === 'password') {
+          const passwordKey = Object.keys(data).find(key =>
+            key.toLowerCase() === 'password'
+          );
+          if (passwordKey) {
+            value = data[passwordKey];
+            Logger.log(`🔑 Password field "${fieldId}" filled`);
+          }
+        }
 
-    const title = document.createElement('h2');
-    title.style.cssText = styles.title;
-    title.textContent = 'Autofill';
-    header.appendChild(title);
+        if (!value) {
+          Logger.log(`⊘ Skipping "${fieldId}" - no value`);
+          return;
+        }
 
-    const headerRight = document.createElement('div');
-    headerRight.style.cssText = 'display: flex; gap: 8px;';
+        // Apply value based on field type
+        if (element.tagName === 'SELECT') {
+          for (let option of element.options) {
+            if (option.value === value ||
+                option.text.toLowerCase().includes(value.toLowerCase())) {
+              element.value = option.value;
+              filledCount++;
+              Logger.log(`✓ Filled SELECT "${fieldId}"`);
+              break;
+            }
+          }
+        } else if (element.type === 'checkbox') {
+          element.checked = value === true || value === 'true' || value === 'yes';
+          filledCount++;
+          Logger.log(`✓ Filled CHECKBOX "${fieldId}"`);
+        } else if (element.type === 'radio') {
+          const field = collectedFields.find(f => f.id === fieldId);
+          if (field && field.elements) {
+            field.elements.forEach(radio => {
+              if (radio.value === value ||
+                  radio.value.toLowerCase().includes(value.toLowerCase())) {
+                radio.checked = true;
+                filledCount++;
+                Logger.log(`✓ Filled RADIO "${fieldId}"`);
+              }
+            });
+          }
+        } else {
+          element.value = value;
+          filledCount++;
+          Logger.log(`✓ Filled "${fieldId}"`);
+        }
 
-    const settingsBtn = document.createElement('button');
-    settingsBtn.style.cssText = styles.settingsBtn;
-    settingsBtn.innerHTML = '⚙️';
-    settingsBtn.addEventListener('click', showSettings);
-    headerRight.appendChild(settingsBtn);
+        // Trigger events for frameworks
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+      });
 
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = styles.closeBtn;
-    closeBtn.innerHTML = '✕';
-    closeBtn.addEventListener('click', closeModal);
-    headerRight.appendChild(closeBtn);
+      Logger.log(`✅ Filled ${filledCount} fields total`);
+      return filledCount;
+    }
+  };
 
-    header.appendChild(headerRight);
+  // ============================================================================
+  // UI CONTROLLER
+  // ============================================================================
 
-    const body = document.createElement('div');
-    body.style.cssText = styles.body;
+  const UI = {
+    state: {
+      collectedFields: [],
+      fieldElements: new Map()
+    },
 
-    const buttons = [
-      { text: 'Fill with Constants', icon: '📝', style: styles.buttonPrimary, action: fillWithConstants },
-      { text: 'Fill All (LLM)', icon: '⚡', style: styles.buttonSuccess, action: fillAll },
-      { text: 'Fill from Recent', icon: '📋', style: styles.buttonWarning, action: fillFromRecent }
-    ];
+    showMainMenu() {
+      this.closeModal();
+      document.body.insertAdjacentHTML('beforeend', Templates.mainMenu());
 
-    buttons.forEach(btn => {
-      const button = document.createElement('button');
-      button.style.cssText = styles.button + btn.style;
-      button.innerHTML = `<span>${btn.text}</span><span style="font-size: 20px;">${btn.icon}</span>`;
-      button.addEventListener('click', btn.action);
-      body.appendChild(button);
-    });
+      // Attach event listeners
+      document.getElementById('close-btn').onclick = () => this.closeModal();
+      document.getElementById('logs-btn').onclick = () => this.showLogs();
+      document.getElementById('settings-btn').onclick = () => this.showSettings();
+      document.getElementById('fill-constants-btn').onclick = () => this.fillWithConstants();
+      document.getElementById('fill-llm-btn').onclick = () => this.fillLLMFields();
+      document.getElementById('save-doc-btn').onclick = () => this.saveToDoc();
 
-    content.appendChild(header);
-    content.appendChild(body);
-    modal.appendChild(content);
-    document.body.appendChild(modal);
+      // Close on backdrop click
+      document.getElementById('autofill-modal').onclick = (e) => {
+        if (e.target.id === 'autofill-modal') this.closeModal();
+      };
+    },
 
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-  }
+    showLogs() {
+      this.closeModal();
+      document.body.insertAdjacentHTML('beforeend', Templates.logsView(Logger.logs));
 
-  // Initialize
-  showMainMenu();
+      // Attach event listeners
+      document.getElementById('close-btn').onclick = () => this.showMainMenu();
+      document.getElementById('clear-logs-btn').onclick = () => {
+        Logger.clear();
+        this.showLogs(); // Refresh
+      };
+    },
+
+    async showSettings() {
+      try {
+        const constants = await API.getConstants();
+        this.closeModal();
+        document.body.insertAdjacentHTML('beforeend', Templates.settingsMenu(constants));
+
+        // Attach event listeners
+        document.getElementById('close-btn').onclick = () => this.showMainMenu();
+        document.getElementById('save-constants-btn').onclick = () => this.saveConstants();
+        document.getElementById('add-field-btn').onclick = () => this.addNewConstantField();
+
+        // Remove buttons
+        document.querySelectorAll('[data-remove]').forEach(btn => {
+          btn.onclick = () => btn.closest('[style*="infoBox"]').remove();
+        });
+      } catch (error) {
+        alert(`Error loading settings: ${error.message}`);
+      }
+    },
+
+    addNewConstantField() {
+      const container = document.getElementById('constants-scroll');
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = Templates.newConstantField();
+      const newField = tempDiv.firstElementChild;
+
+      newField.querySelector('[data-remove]').onclick = () => newField.remove();
+      container.appendChild(newField);
+      container.scrollTop = container.scrollHeight;
+    },
+
+    async saveConstants() {
+      const saveBtn = document.getElementById('save-constants-btn');
+      const container = document.getElementById('constants-scroll');
+
+      try {
+        saveBtn.innerHTML = '<span>Saving...</span>';
+        saveBtn.disabled = true;
+
+        const updated = {};
+
+        // Existing constants
+        container.querySelectorAll('input[data-key]').forEach(input => {
+          const key = input.getAttribute('data-key');
+          if (key) updated[key] = input.value;
+        });
+
+        // New constants
+        const newKeys = container.querySelectorAll('input[data-new-key]');
+        const newValues = container.querySelectorAll('input[data-new-value]');
+        newKeys.forEach((keyInput, idx) => {
+          const key = keyInput.value.trim();
+          const value = newValues[idx].value.trim();
+          if (key && value) updated[key] = value;
+        });
+
+        await API.saveConstants(updated);
+
+        saveBtn.innerHTML = '<span>✓ Saved!</span>';
+        saveBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+
+        setTimeout(() => this.showMainMenu(), 1000);
+      } catch (error) {
+        alert(`Error saving: ${error.message}`);
+        saveBtn.innerHTML = '<span>Save</span><span>💾</span>';
+        saveBtn.disabled = false;
+      }
+    },
+
+    async fillWithConstants() {
+      Logger.clear();
+
+      try {
+        const result = FormHandler.collectFields();
+        if (!result) return;
+
+        this.state.collectedFields = result.fields;
+        this.state.fieldElements = result.elements;
+
+        const emptyFields = FormHandler.getEmptyFields(result.fields);
+
+        if (emptyFields.length === 0) {
+          alert('All fields are already filled!');
+          this.closeModal();
+          return;
+        }
+
+        // Send empty fields to backend for constants matching
+        const cleanFields = emptyFields.map(field => ({
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          label: field.label,
+          placeholder: field.placeholder,
+          required: field.required,
+          value: field.value,
+          options: field.options
+        }));
+
+        const data = await API.fillConstants(cleanFields);
+        const matches = data.fields || {};
+
+        const filledCount = FormFiller.fill(
+          this.state.fieldElements,
+          matches,
+          this.state.collectedFields
+        );
+
+        alert(`✓ Filled ${filledCount}/${emptyFields.length} fields with constants!`);
+        this.closeModal();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      } finally {
+        if (CONFIG.debugMode) Logger.show();
+      }
+    },
+
+    async fillLLMFields() {
+      Logger.clear();
+
+      try {
+        // Scan page for fields marked with "llm-fill"
+        const llmResult = FormHandler.getLLMMarkedFields();
+
+        if (!llmResult || llmResult.fields.length === 0) {
+          alert('No fields marked with "llm-fill" found!\n\nType "llm-fill" in any field you want AI to complete.');
+          return;
+        }
+
+        Logger.log(`Found ${llmResult.fields.length} fields marked for LLM`);
+
+        // Store elements for later filling
+        this.state.collectedFields = llmResult.fields;
+        this.state.fieldElements = llmResult.elements;
+
+        // Get job context
+        const context = await API.getJobContext();
+
+        // Send marked fields to LLM
+        const cleanFields = llmResult.fields.map(field => ({
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          label: field.label,
+          placeholder: field.placeholder,
+          required: field.required,
+          value: field.value,
+          options: field.options
+        }));
+
+        const llmData = await API.fillLLM(cleanFields, context);
+        const llmMatches = llmData.fields || {};
+
+        const filledCount = FormFiller.fill(
+          this.state.fieldElements,
+          llmMatches,
+          this.state.collectedFields
+        );
+
+        alert(`✓ Filled ${filledCount}/${llmResult.fields.length} fields with LLM!`);
+        this.closeModal();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      } finally {
+        if (CONFIG.debugMode) Logger.show();
+      }
+    },
+
+    async saveToDoc() {
+      try {
+        const result = FormHandler.collectFields();
+        if (!result) return;
+
+        // Collect all filled form data
+        const formData = {};
+        result.elements.forEach((element, fieldId) => {
+          if (element.value && element.value.trim() !== '') {
+            formData[fieldId] = element.value;
+          }
+        });
+
+        if (Object.keys(formData).length === 0) {
+          alert('No data to save! Fill out the form first.');
+          return;
+        }
+
+        // TODO: Implement Google Doc save functionality
+        alert('Google Doc save coming soon!\n\nCollected data:\n' + JSON.stringify(formData, null, 2));
+
+        this.closeModal();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    },
+
+    closeModal() {
+      const modal = document.getElementById('autofill-modal');
+      if (modal) modal.remove();
+    }
+  };
+
+  // ============================================================================
+  // INITIALIZE
+  // ============================================================================
+
+  UI.showMainMenu();
+
 })();

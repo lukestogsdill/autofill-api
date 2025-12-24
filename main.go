@@ -64,6 +64,8 @@ func main() {
 	loadJobContextFromFile()
 
 	http.HandleFunc("/api/fill", handleFill)
+	http.HandleFunc("/api/fill-constants", handleFillConstants)
+	http.HandleFunc("/api/fill-llm", handleFillLLM)
 	http.HandleFunc("/api/context", handleContext)
 	http.HandleFunc("/api/constants", handleConstants)
 	http.HandleFunc("/api/recent", handleRecent)
@@ -309,6 +311,294 @@ func handleFill(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("responses/response_%s.json", timestamp)
 
 	// Create responses directory if it doesn't exist
+	if err := os.MkdirAll("responses", 0755); err != nil {
+		log.Printf("⚠️  Failed to create responses directory: %v", err)
+	} else {
+		responseJSON, err := json.MarshalIndent(response, "", "  ")
+		if err != nil {
+			log.Printf("⚠️  Failed to marshal response: %v", err)
+		} else {
+			if err := os.WriteFile(filename, responseJSON, 0644); err != nil {
+				log.Printf("⚠️  Failed to save response to file: %v", err)
+			} else {
+				log.Printf("💾 Response saved to: %s\n", filename)
+			}
+		}
+	}
+
+	// Send response
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		return
+	}
+}
+
+// ConstantsFillRequest for /api/fill-constants endpoint
+type ConstantsFillRequest struct {
+	Fields []matcher.Field `json:"fields"`
+}
+
+// ConstantsFillResponse for /api/fill-constants endpoint
+type ConstantsFillResponse struct {
+	Fields   map[string]string `json:"fields"`
+	Metadata struct {
+		Matched     int `json:"matched"`
+		TotalFields int `json:"total_fields"`
+	} `json:"metadata"`
+}
+
+func handleFillConstants(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Content-Type", "application/json")
+
+	// Handle preflight
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Only allow POST
+	if r.Method != "POST" {
+		respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Limit request body size
+	r.Body = http.MaxBytesReader(w, r.Body, 1048576) // 1MB max
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Failed to read request body")
+		return
+	}
+	defer r.Body.Close()
+
+	if len(body) == 0 {
+		respondWithError(w, http.StatusBadRequest, "Empty request body")
+		return
+	}
+
+	// Parse JSON request
+	var req ConstantsFillRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		log.Printf("Error parsing JSON: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid JSON format")
+		return
+	}
+
+	log.Println("========================================")
+	log.Printf("📝 Fill Constants: Processing %d fields", len(req.Fields))
+	log.Println("========================================")
+
+	// Load constants
+	consts, err := constants.LoadConstants()
+	if err != nil {
+		log.Printf("Error loading constants: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to load constants")
+		return
+	}
+
+	// Initialize response
+	response := ConstantsFillResponse{
+		Fields: make(map[string]string),
+	}
+
+	// Match fields with constants
+	log.Println("\n🔍 Matching fields with constants...")
+	for _, field := range req.Fields {
+		result := matcher.MatchField(field.Label, field.Name, field.Placeholder, consts)
+		if result.Found {
+			response.Fields[field.ID] = result.Value
+			response.Metadata.Matched++
+			log.Printf("  ✓ '%s' → %s", field.Label, result.Value)
+		}
+	}
+
+	response.Metadata.TotalFields = len(req.Fields)
+
+	log.Println("\n========================================")
+	log.Printf("✅ Constants Fill Complete!")
+	log.Printf("  Matched: %d/%d fields", response.Metadata.Matched, response.Metadata.TotalFields)
+	log.Println("========================================\n")
+
+	// Send response
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		return
+	}
+}
+
+// LLMFillRequest for /api/fill-llm endpoint
+type LLMFillRequest struct {
+	Fields     []matcher.Field `json:"fields"`
+	JobContext struct {
+		Title   string `json:"title"`
+		Company string `json:"company"`
+		URL     string `json:"url"`
+	} `json:"job_context"`
+}
+
+// LLMFillResponse for /api/fill-llm endpoint
+type LLMFillResponse struct {
+	Fields   map[string]string `json:"fields"`
+	Metadata struct {
+		LLMMatches  int `json:"llm_matches"`
+		TotalFields int `json:"total_fields"`
+	} `json:"metadata"`
+}
+
+func handleFillLLM(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Content-Type", "application/json")
+
+	// Handle preflight
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Only allow POST
+	if r.Method != "POST" {
+		respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Limit request body size
+	r.Body = http.MaxBytesReader(w, r.Body, 1048576) // 1MB max
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Failed to read request body")
+		return
+	}
+	defer r.Body.Close()
+
+	if len(body) == 0 {
+		respondWithError(w, http.StatusBadRequest, "Empty request body")
+		return
+	}
+
+	// Parse JSON request
+	var req LLMFillRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		log.Printf("Error parsing JSON: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid JSON format")
+		return
+	}
+
+	log.Println("========================================")
+	log.Printf("🤖 Fill LLM: Processing %d fields for %s at %s", len(req.Fields), req.JobContext.Title, req.JobContext.Company)
+	log.Println("========================================")
+
+	// Get Gemini API key
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		log.Println("❌ Error: GEMINI_API_KEY not set")
+		respondWithError(w, http.StatusInternalServerError, "LLM API key not configured")
+		return
+	}
+
+	// Load constants (for context)
+	consts, err := constants.LoadConstants()
+	if err != nil {
+		log.Printf("Error loading constants: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to load constants")
+		return
+	}
+
+	// Load company info
+	companyInfo := ""
+	if companyData, err := os.ReadFile("company-info.txt"); err == nil {
+		companyInfo = string(companyData)
+		log.Printf("📄 Loaded company-info.txt (%d characters)", len(companyInfo))
+	} else {
+		log.Printf("⚠️  No company-info.txt found")
+	}
+
+	// Load experience
+	experience := ""
+	if expData, err := os.ReadFile("experience.txt"); err == nil {
+		experience = string(expData)
+		log.Printf("📄 Loaded experience.txt (%d characters)", len(experience))
+	} else {
+		log.Printf("⚠️  No experience.txt found")
+	}
+
+	// Combine company info and experience for context
+	contextMD := companyInfo
+	if experience != "" {
+		if contextMD != "" {
+			contextMD += "\n\n"
+		}
+		contextMD += experience
+	}
+
+	// Initialize response
+	response := LLMFillResponse{
+		Fields: make(map[string]string),
+	}
+
+	// Create LLM client
+	ctx := context.Background()
+	llmClient, err := llm.NewClient(ctx, apiKey)
+	if err != nil {
+		log.Printf("❌ Error creating LLM client: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to create LLM client")
+		return
+	}
+	defer llmClient.Close()
+
+	// Reset usage tracking
+	llm.ResetUsage()
+
+	// Build context for LLM
+	fieldContext := matcher.FieldContext{
+		JobTitle:     req.JobContext.Title,
+		Company:      req.JobContext.Company,
+		ExperienceMD: contextMD,
+		Constants:    consts,
+	}
+
+	// Fill each field with LLM
+	log.Println("\n🤖 Generating LLM responses...")
+	for _, field := range req.Fields {
+		value, err := matcher.FillFieldWithLLM(field, fieldContext, llmClient)
+		if err != nil {
+			log.Printf("  ❌ '%s': %v", field.Label, err)
+			continue
+		}
+		response.Fields[field.ID] = value
+		response.Metadata.LLMMatches++
+		log.Printf("  ✓ '%s' → %s", field.Label, value)
+	}
+
+	response.Metadata.TotalFields = len(req.Fields)
+
+	// Log token usage
+	usage := llm.GetUsage()
+	log.Printf("\n📈 LLM Token Usage:")
+	log.Printf("  Input tokens:  %d", usage.InputTokens)
+	log.Printf("  Output tokens: %d", usage.OutputTokens)
+	log.Printf("  Total tokens:  %d", usage.InputTokens+usage.OutputTokens)
+	log.Printf("  Requests made: %d", usage.RequestCount)
+
+	log.Println("\n========================================")
+	log.Printf("✅ LLM Fill Complete!")
+	log.Printf("  Filled: %d/%d fields", response.Metadata.LLMMatches, response.Metadata.TotalFields)
+	log.Println("========================================\n")
+
+	// Save response to file
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	filename := fmt.Sprintf("responses/response_llm_%s.json", timestamp)
+
 	if err := os.MkdirAll("responses", 0755); err != nil {
 		log.Printf("⚠️  Failed to create responses directory: %v", err)
 	} else {
