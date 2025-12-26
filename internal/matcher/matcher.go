@@ -108,7 +108,21 @@ func MatchField(label, fieldName, placeholder string, constants map[string]strin
 			return FieldMatchResult{Value: value, Source: "constant", Found: true}
 		}
 
-		// Try fuzzy matching against common patterns
+		// Try semantic matching if available (threshold: 0.7)
+		semanticMatcher := GetSemanticMatcher()
+		if semanticMatcher != nil {
+			semanticResult := semanticMatcher.MatchFieldSemantically(normalizedLabel, 0.7)
+			if semanticResult.Found {
+				if value, exists := constants[semanticResult.Key]; exists {
+					if hasNegation {
+						value = invertBoolean(value)
+					}
+					return FieldMatchResult{Value: value, Source: "constant", Found: true}
+				}
+			}
+		}
+
+		// Fallback to fuzzy matching against common patterns
 		if match := fuzzyMatchLabel(normalizedLabel, constants); match.Found {
 			if hasNegation {
 				match.Value = invertBoolean(match.Value)

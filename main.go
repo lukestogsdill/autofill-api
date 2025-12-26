@@ -63,6 +63,25 @@ func main() {
 	// Load job context from company-info.txt
 	loadJobContextFromFile()
 
+	// Initialize semantic matcher with cached embeddings
+	log.Println("🚀 Initializing semantic matcher...")
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey != "" {
+		consts, err := constants.LoadConstants()
+		if err != nil {
+			log.Printf("⚠️  Warning: Failed to load constants for semantic matcher: %v", err)
+		} else {
+			ctx := context.Background()
+			if err := matcher.InitSemanticMatcher(ctx, apiKey, consts); err != nil {
+				log.Printf("⚠️  Warning: Failed to initialize semantic matcher: %v", err)
+				log.Println("    Falling back to traditional fuzzy matching")
+			}
+		}
+	} else {
+		log.Println("⚠️  GEMINI_API_KEY not set, semantic matching disabled")
+		log.Println("    Using traditional fuzzy matching only")
+	}
+
 	http.HandleFunc("/api/fill", handleFill)
 	http.HandleFunc("/api/fill-constants", handleFillConstants)
 	http.HandleFunc("/api/fill-llm", handleFillLLM)
@@ -70,6 +89,7 @@ func main() {
 	http.HandleFunc("/api/constants", handleConstants)
 	http.HandleFunc("/api/recent", handleRecent)
 	http.HandleFunc("/script.js", serveScript)
+	http.HandleFunc("/autofill.user.js", serveUserscript)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -134,6 +154,46 @@ func serveScript(w http.ResponseWriter, r *http.Request) {
 	// Replace the API_URL placeholder in the script
 	scriptContent := string(script)
 	scriptContent = fmt.Sprintf("const API_URL = '%s';\n%s", apiURL, scriptContent)
+
+	if _, err := w.Write([]byte(scriptContent)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
+}
+
+func serveUserscript(w http.ResponseWriter, r *http.Request) {
+	// Only allow GET requests
+	if r.Method != "GET" {
+		respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/javascript")
+	w.Header().Set("Cache-Control", "no-cache")
+
+	ip := os.Getenv("IP")
+	if ip == "" {
+		ip = "localhost"
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+
+	apiURL := fmt.Sprintf("https://%s:%s/api/fill", ip, port)
+
+	userscript, err := os.ReadFile("public/autofill.user.js")
+	if err != nil {
+		log.Printf("Error reading public/autofill.user.js: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Userscript file not found")
+		return
+	}
+
+	// Replace placeholders in the userscript
+	scriptContent := string(userscript)
+	scriptContent = strings.ReplaceAll(scriptContent, "YOUR_SERVER_IP:PORT", fmt.Sprintf("%s:%s", ip, port))
+	scriptContent = strings.ReplaceAll(scriptContent, "const API_URL = 'https://YOUR_SERVER_IP:PORT/api/fill';", fmt.Sprintf("const API_URL = '%s';", apiURL))
 
 	if _, err := w.Write([]byte(scriptContent)); err != nil {
 		log.Printf("Error writing response: %v", err)

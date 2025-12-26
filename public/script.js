@@ -7,7 +7,7 @@
 
   const CONFIG = {
     apiBase: API_URL.replace('/api/fill', ''),
-    llmTrigger: '##',  // Type this in a form field to trigger LLM for that field
+    llmTrigger: 'llm-fill',  // Type this in a form field to trigger LLM for that field
     debugMode: true
   };
 
@@ -978,6 +978,8 @@
         zIndex: '999998',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s',
         justifyContent: 'center',
         transition: 'all 0.2s',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
