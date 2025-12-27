@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"log"
 	"regexp"
 	"strings"
 )
@@ -108,17 +109,20 @@ func MatchField(label, fieldName, placeholder string, constants map[string]strin
 			return FieldMatchResult{Value: value, Source: "constant", Found: true}
 		}
 
-		// Try semantic matching if available (threshold: 0.7)
+		// Try semantic matching if available (lowered threshold to 0.5 for better coverage)
 		semanticMatcher := GetSemanticMatcher()
 		if semanticMatcher != nil {
-			semanticResult := semanticMatcher.MatchFieldSemantically(normalizedLabel, 0.7)
+			semanticResult := semanticMatcher.MatchFieldSemantically(normalizedLabel, 0.5)
 			if semanticResult.Found {
+				log.Printf("🎯 Semantic match: '%s' → '%s' (%.2f similarity)", normalizedLabel, semanticResult.Key, semanticResult.Similarity)
 				if value, exists := constants[semanticResult.Key]; exists {
 					if hasNegation {
 						value = invertBoolean(value)
 					}
 					return FieldMatchResult{Value: value, Source: "constant", Found: true}
 				}
+			} else {
+				log.Printf("⚠️  No semantic match for '%s' (best: %s @ %.2f)", normalizedLabel, semanticResult.Key, semanticResult.Similarity)
 			}
 		}
 
@@ -153,53 +157,20 @@ func MatchField(label, fieldName, placeholder string, constants map[string]strin
 	return FieldMatchResult{Found: false}
 }
 
-// fuzzyMatchLabel performs fuzzy matching with common field patterns
+// fuzzyMatchLabel performs minimal fallback matching
+// NOTE: This is ONLY used when semantic matching fails or isn't available
+// Keep this MINIMAL - the semantic matcher handles everything else automatically!
 func fuzzyMatchLabel(label string, constants map[string]string) FieldMatchResult {
-	// Define common field label patterns and their corresponding constant keys
-	patterns := map[string][]string{
-		"first_name":           {"first name", "fname", "given name", "firstname"},
-		"last_name":            {"last name", "lname", "surname", "family name", "lastname"},
-		"name":                 {"full name", "your name", "complete name"},
-		"email":                {"email address", "e mail", "email addr", "your email"},
-		"phone":                {"phone number", "mobile", "telephone", "cell phone", "phone no", "contact number"},
-		"city":                 {"city", "town"},
-		"state":                {"state", "province", "region"},
-		"zip":                  {"zip code", "postal code", "zipcode", "postcode"},
-		"country":              {"country"},
-		"linkedin_url":         {"linkedin", "linkedin profile", "linkedin url"},
-		"github_url":           {"github", "github profile", "github url"},
-		"website_url":          {"website", "personal website", "portfolio", "portfolio url"},
-		"years_experience":     {"years of experience", "years experience", "experience years", "yoe"},
-		"willing_to_relocate":  {"willing to relocate", "relocation", "relocate"},
-		"require_sponsorship":  {"require sponsorship", "need sponsorship", "visa sponsorship", "work authorization"},
-		"authorized_to_work":   {"authorized to work", "work authorization", "legally authorized"},
-		"over_18":              {"over 18", "age 18", "18 years old"},
-		"veteran":              {"veteran", "military", "armed forces", "service member"},
-		"veteran_status":       {"veteran status"},
-		"disability":           {"disability", "disabled", "impairment"},
-		"disability_status":    {"disability status"},
-		"convicted_felony":     {"convicted", "felony", "criminal", "crime"},
-		"security_clearance":   {"security clearance", "clearance"},
-	}
+	// ONLY handle name splitting since it requires special logic to split "John Doe"
+	// into first/last parts. Everything else goes through semantic matching!
 
-	for constantKey, labelPatterns := range patterns {
-		for _, pattern := range labelPatterns {
-			if strings.Contains(label, pattern) {
-				if value, exists := constants[constantKey]; exists {
-					return FieldMatchResult{Value: value, Source: "constant", Found: true}
-				}
-			}
-		}
-	}
-
-	// Try partial matches for name-related fields
 	if strings.Contains(label, "name") {
-		// Check if it's asking for last name
+		// Last name
 		if strings.Contains(label, "last") || strings.Contains(label, "sur") || strings.Contains(label, "family") {
 			if value, exists := constants["last_name"]; exists {
 				return FieldMatchResult{Value: value, Source: "constant", Found: true}
 			}
-			// Fallback: split full name if available
+			// Fallback: split full name
 			if fullName, exists := constants["name"]; exists {
 				parts := strings.Fields(fullName)
 				if len(parts) >= 2 {
@@ -207,42 +178,17 @@ func fuzzyMatchLabel(label string, constants map[string]string) FieldMatchResult
 				}
 			}
 		} else if strings.Contains(label, "first") || strings.Contains(label, "given") {
-			// Asking for first name
+			// First name
 			if value, exists := constants["first_name"]; exists {
 				return FieldMatchResult{Value: value, Source: "constant", Found: true}
 			}
-			// Fallback: split full name if available
+			// Fallback: split full name
 			if fullName, exists := constants["name"]; exists {
 				parts := strings.Fields(fullName)
 				if len(parts) >= 1 {
 					return FieldMatchResult{Value: parts[0], Source: "constant", Found: true}
 				}
 			}
-		} else {
-			// Just "name" - use full name
-			if value, exists := constants["name"]; exists {
-				return FieldMatchResult{Value: value, Source: "constant", Found: true}
-			}
-			// Fallback: build from first + last
-			if firstName, ok1 := constants["first_name"]; ok1 {
-				if lastName, ok2 := constants["last_name"]; ok2 {
-					return FieldMatchResult{Value: firstName + " " + lastName, Source: "constant", Found: true}
-				}
-			}
-		}
-	}
-
-	// Try email variations
-	if strings.Contains(label, "email") || strings.Contains(label, "mail") {
-		if value, exists := constants["email"]; exists {
-			return FieldMatchResult{Value: value, Source: "constant", Found: true}
-		}
-	}
-
-	// Try phone variations
-	if strings.Contains(label, "phone") || strings.Contains(label, "mobile") || strings.Contains(label, "cell") {
-		if value, exists := constants["phone"]; exists {
-			return FieldMatchResult{Value: value, Source: "constant", Found: true}
 		}
 	}
 

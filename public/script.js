@@ -210,34 +210,76 @@
     },
 
     settingsMenu(constants) {
-      const constantsHTML = Object.entries(constants).map(([key, value]) => `
-        <div style="${STYLES.infoBox} display: flex; gap: 8px; align-items: start;">
-          <div style="flex: 1;">
-            <div style="${STYLES.infoLabel}">${key.replace(/_/g, ' ').toUpperCase()}</div>
-            <input
-              type="text"
-              data-key="${key}"
-              value="${value}"
-              placeholder="constant value"
-              style="${STYLES.fieldInput}"
-            />
-          </div>
-          <button
-            data-remove="${key}"
-            style="
-              width: 32px;
-              height: 32px;
-              border-radius: 8px;
-              background: rgba(239, 68, 68, 0.2);
-              border: 1px solid rgba(239, 68, 68, 0.3);
-              color: #ef4444;
-              cursor: pointer;
-              font-size: 18px;
-              margin-top: 20px;
-            "
-          >✕</button>
-        </div>
-      `).join('');
+      const constantsHTML = Object.entries(constants).map(([key, value]) => {
+        // Detect if value is boolean-like
+        const isBool = value === 'yes' || value === 'no' || value === 'true' || value === 'false';
+        const isYes = value === 'yes' || value === 'true';
+
+        if (isBool) {
+          return `
+            <div style="${STYLES.infoBox} display: flex; gap: 8px; align-items: start;">
+              <div style="flex: 1;">
+                <div style="${STYLES.infoLabel}">${key.replace(/_/g, ' ').toUpperCase()}</div>
+                <div style="display: flex; gap: 12px; margin-top: 8px;">
+                  <label style="display: flex; align-items: center; gap: 6px; color: white; cursor: pointer;">
+                    <input type="radio" name="${key}" value="yes" data-key="${key}" ${isYes ? 'checked' : ''}
+                           style="width: 18px; height: 18px; cursor: pointer;">
+                    <span>Yes</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; color: white; cursor: pointer;">
+                    <input type="radio" name="${key}" value="no" data-key="${key}" ${!isYes ? 'checked' : ''}
+                           style="width: 18px; height: 18px; cursor: pointer;">
+                    <span>No</span>
+                  </label>
+                </div>
+              </div>
+              <button
+                data-remove="${key}"
+                style="
+                  width: 32px;
+                  height: 32px;
+                  border-radius: 8px;
+                  background: rgba(239, 68, 68, 0.2);
+                  border: 1px solid rgba(239, 68, 68, 0.3);
+                  color: #ef4444;
+                  cursor: pointer;
+                  font-size: 18px;
+                  margin-top: 20px;
+                "
+              >✕</button>
+            </div>
+          `;
+        } else {
+          return `
+            <div style="${STYLES.infoBox} display: flex; gap: 8px; align-items: start;">
+              <div style="flex: 1;">
+                <div style="${STYLES.infoLabel}">${key.replace(/_/g, ' ').toUpperCase()}</div>
+                <input
+                  type="text"
+                  data-key="${key}"
+                  value="${value}"
+                  placeholder="constant value"
+                  style="${STYLES.fieldInput}"
+                />
+              </div>
+              <button
+                data-remove="${key}"
+                style="
+                  width: 32px;
+                  height: 32px;
+                  border-radius: 8px;
+                  background: rgba(239, 68, 68, 0.2);
+                  border: 1px solid rgba(239, 68, 68, 0.3);
+                  color: #ef4444;
+                  cursor: pointer;
+                  font-size: 18px;
+                  margin-top: 20px;
+                "
+              >✕</button>
+            </div>
+          `;
+        }
+      }).join('');
 
       return `
         <div id="autofill-modal" style="${STYLES.modal}">
@@ -271,13 +313,13 @@
             <input
               type="text"
               data-new-key
-              placeholder="field_name"
+              placeholder="field_name (e.g. has_car, speaks_spanish)"
               style="${STYLES.fieldInput} margin-top: 0; font-family: monospace; font-size: 12px;"
             />
             <input
               type="text"
               data-new-value
-              placeholder="value"
+              placeholder="value (text, or 'yes'/'no' for boolean)"
               style="${STYLES.fieldInput}"
             />
           </div>
@@ -653,16 +695,24 @@
           }
         }
 
-        if (!value) {
+        if (value === undefined || value === null) {
           Logger.log(`⊘ Skipping "${fieldId}" - no value`);
           return;
+        }
+
+        // Convert booleans to yes/no for radio/text fields
+        let stringValue = value;
+        if (typeof value === 'boolean') {
+          stringValue = value ? 'yes' : 'no';
+        } else {
+          stringValue = String(value);
         }
 
         // Apply value based on field type
         if (element.tagName === 'SELECT') {
           for (let option of element.options) {
-            if (option.value === value ||
-                option.text.toLowerCase().includes(value.toLowerCase())) {
+            if (option.value === stringValue ||
+                option.text.toLowerCase().includes(stringValue.toLowerCase())) {
               element.value = option.value;
               filledCount++;
               Logger.log(`✓ Filled SELECT "${fieldId}"`);
@@ -677,16 +727,22 @@
           const field = collectedFields.find(f => f.id === fieldId);
           if (field && field.elements) {
             field.elements.forEach(radio => {
-              if (radio.value === value ||
-                  radio.value.toLowerCase().includes(value.toLowerCase())) {
+              // Check for exact match or partial match
+              const radioValueLower = radio.value.toLowerCase();
+              const stringValueLower = stringValue.toLowerCase();
+
+              if (radio.value === stringValue ||
+                  radioValueLower === stringValueLower ||
+                  radioValueLower.includes(stringValueLower) ||
+                  stringValueLower.includes(radioValueLower)) {
                 radio.checked = true;
                 filledCount++;
-                Logger.log(`✓ Filled RADIO "${fieldId}"`);
+                Logger.log(`✓ Filled RADIO "${fieldId}" with value "${radio.value}"`);
               }
             });
           }
         } else {
-          element.value = value;
+          element.value = stringValue;
           filledCount++;
           Logger.log(`✓ Filled "${fieldId}"`);
         }
@@ -782,10 +838,20 @@
 
         const updated = {};
 
-        // Existing constants
-        container.querySelectorAll('input[data-key]').forEach(input => {
+        // Existing text constants
+        container.querySelectorAll('input[type="text"][data-key]').forEach(input => {
           const key = input.getAttribute('data-key');
           if (key) updated[key] = input.value;
+        });
+
+        // Existing boolean constants (radio buttons)
+        const radioGroups = {};
+        container.querySelectorAll('input[type="radio"][data-key]:checked').forEach(radio => {
+          const key = radio.getAttribute('data-key');
+          if (key && !radioGroups[key]) {
+            radioGroups[key] = radio.value === 'yes';
+            updated[key] = radioGroups[key];
+          }
         });
 
         // New constants
@@ -793,8 +859,17 @@
         const newValues = container.querySelectorAll('input[data-new-value]');
         newKeys.forEach((keyInput, idx) => {
           const key = keyInput.value.trim();
-          const value = newValues[idx].value.trim();
-          if (key && value) updated[key] = value;
+          let value = newValues[idx].value.trim();
+          if (key && value) {
+            // Convert yes/no to boolean
+            if (value === 'yes' || value === 'true') {
+              updated[key] = true;
+            } else if (value === 'no' || value === 'false') {
+              updated[key] = false;
+            } else {
+              updated[key] = value;
+            }
+          }
         });
 
         await API.saveConstants(updated);
@@ -1021,10 +1096,7 @@
   // INITIALIZE
   // ============================================================================
 
-  // Create floating button (only once)
+  // Create floating button (click it to open menu)
   FloatingButton.create();
-
-  // Show menu on first load
-  UI.showMainMenu();
 
 })();

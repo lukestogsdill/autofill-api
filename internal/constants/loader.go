@@ -2,6 +2,7 @@ package constants
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"sync"
 )
@@ -33,13 +34,40 @@ func LoadConstants() (map[string]string, error) {
 		return nil, err
 	}
 
-	var constants map[string]string
-	if err := json.Unmarshal(data, &constants); err != nil {
+	// First unmarshal to interface{} to handle mixed types
+	var rawConstants map[string]interface{}
+	if err := json.Unmarshal(data, &rawConstants); err != nil {
 		return nil, err
+	}
+
+	// Convert all values to strings (booleans become "yes"/"no")
+	constants := make(map[string]string)
+	for key, value := range rawConstants {
+		constants[key] = interfaceToString(value)
 	}
 
 	constantsCache = constants
 	return constants, nil
+}
+
+// interfaceToString converts interface{} values to strings
+// Booleans are converted to "yes"/"no" for form compatibility
+func interfaceToString(value interface{}) string {
+	switch v := value.(type) {
+	case bool:
+		if v {
+			return "yes"
+		}
+		return "no"
+	case string:
+		return v
+	case float64:
+		return fmt.Sprintf("%.0f", v)
+	case int:
+		return fmt.Sprintf("%d", v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }
 
 // GetConstant retrieves a constant value by key
@@ -63,9 +91,16 @@ func ReloadConstants() error {
 		return err
 	}
 
-	var constants map[string]string
-	if err := json.Unmarshal(data, &constants); err != nil {
+	// First unmarshal to interface{} to handle mixed types
+	var rawConstants map[string]interface{}
+	if err := json.Unmarshal(data, &rawConstants); err != nil {
 		return err
+	}
+
+	// Convert all values to strings (booleans become "yes"/"no")
+	constants := make(map[string]string)
+	for key, value := range rawConstants {
+		constants[key] = interfaceToString(value)
 	}
 
 	constantsCache = constants

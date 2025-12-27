@@ -70,8 +70,8 @@ func NewSemanticMatcher(ctx context.Context, apiKey string) (*SemanticMatcher, e
 		return nil, fmt.Errorf("failed to create Gemini client: %w", err)
 	}
 
-	// Use gemini-embedding-004 for embeddings
-	embedModel := client.EmbeddingModel("gemini-embedding-004")
+	// Use text-embedding-004 for embeddings (current free tier model)
+	embedModel := client.EmbeddingModel("text-embedding-004")
 
 	// Set task type for retrieval/similarity matching
 	embedModel.TaskType = genai.TaskTypeRetrievalQuery

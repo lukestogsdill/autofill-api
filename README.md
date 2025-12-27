@@ -1,124 +1,176 @@
 # Autofill API
 
-A simple HTTPS API server that enables remote form autofilling via userscript (recommended for iOS) or bookmarklet.
+A smart autofill system for job applications using semantic matching and AI. Works automatically on any website with forms via iOS Safari userscript.
 
-## Setup
+## Features
 
-### 1. Generate SSL Certificates
+- 🚀 **Auto-loads on form pages** - No bookmarks to click
+- 🧠 **Semantic matching** - Understands field variations using embeddings
+- 🤖 **AI fallback** - LLM generates custom answers for complex questions
+- 📱 **iOS optimized** - Works seamlessly in Safari with Userscripts extension
+- ⚡ **Fast & cheap** - Caches embeddings, only uses LLM when needed
 
-On your server, run:
+## Quick Start
 
+### 1. Server Setup
+
+Generate SSL certificate:
 ```bash
-openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=YOUR_SERVER_IP" -addext "subjectAltName=IP:YOUR_SERVER_IP"
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
+  -subj "/CN=YOUR_SERVER_IP" -addext "subjectAltName=IP:YOUR_SERVER_IP"
 ```
 
-Replace `YOUR_SERVER_IP` with your server's public IP address.
-
-### 2. Configure Environment
-
-Create a `.env` file:
-
+Create `.env` file:
 ```bash
 IP=YOUR_SERVER_IP
-PORT=8000
+PORT=4444
+GEMINI_API_KEY=your_api_key_here
 ```
 
-Replace `YOUR_SERVER_IP` with your server's public IP address.
-
-### 3. Install Dependencies
-
+Install dependencies and run:
 ```bash
 go mod download
+go run .
 ```
 
-### 4. Run the Server
+Server starts on `https://0.0.0.0:4444`
 
-```bash
-go run main.go
-```
+### 2. iOS Safari Setup
 
-The server will start on `https://0.0.0.0:8000`
+**Install Userscripts Extension:**
+1. Download **Userscripts** from App Store (free)
+2. Settings → Safari → Extensions → Userscripts → **ON**
+
+**Install the Script:**
+1. Visit `https://YOUR_SERVER_IP:4444/autofill.user.js` in Safari
+2. Accept certificate warning (one-time)
+3. Tap **Share** → **Userscripts** → **Install Script**
+
+**Done!** The ✨ button now appears automatically on any page with forms.
 
 ## Usage
 
-### Option 1: Userscript (RECOMMENDED FOR iOS)
+### Workflow:
 
-**Why Userscript?** Auto-loads on job pages without clicking anything. Just visit the page and the autofill button appears!
+1. Visit any job application page
+2. ✨ floating button appears automatically
+3. Tap it to open the menu
+4. **Fill Constants** - Fills name, email, phone, etc. instantly
+5. **Type "##"** in empty fields you want AI to complete
+6. **Fill LLM Fields** - AI writes custom responses for marked fields
+7. Review and submit!
 
-#### Setup on iOS Safari:
+### How Matching Works:
 
-1. **Install Userscripts Extension**
-   - Download "Userscripts" from the iOS App Store (free)
-   - Enable it in Safari: Settings → Safari → Extensions → Userscripts → On
-
-2. **Trust the Certificate** (One-time)
-   - Open Safari and visit `https://YOUR_SERVER_IP:PORT/autofill.user.js`
-   - Accept the security warning (self-signed cert)
-   - You should see the userscript code
-
-3. **Install the Userscript**
-   - In Safari, visit `https://YOUR_SERVER_IP:PORT/autofill.user.js`
-   - Tap the "Share" button → "Userscripts" → "Install Script"
-   - The script is now active!
-
-4. **Use It**
-   - Visit any job application page (Lever, Greenhouse, Workday, etc.)
-   - The ✨ floating button automatically appears
-   - Tap to open the autofill menu
-
-**Supported Sites:** Automatically detects Lever, Greenhouse, Workday, Ashby, BambooHR, and many more job platforms.
-
----
-
-### Option 2: Bookmarklet (Alternative)
-
-**Note:** Requires manual activation each time. Userscript is recommended for better UX.
-
-#### 1. Trust the Certificate (One-time)
-
-On your phone/device:
-1. Open browser and visit `https://YOUR_SERVER_IP:PORT/script.js`
-2. Accept security warning about the self-signed certificate
-3. You should see JavaScript code displayed
-4. Your device now trusts the certificate
-
-#### 2. Create the Bookmarklet
-
-Create a bookmark with this JavaScript as the URL:
-
-```javascript
-javascript:(function(){var s=document.createElement('script');s.src='https://YOUR_SERVER_IP:PORT/script.js';document.body.appendChild(s);})();
+```
+Field: "Are you authorized to work in the US?"
+  ↓
+1. Exact match: ❌ (not literally "authorized_to_work")
+2. Semantic match: ✅ (87% similarity to "authorized to work")
+   → Returns: constants["authorized_to_work"] = "yes"
+3. Negation check: ✅ (no negation words)
+4. ✓ Field filled!
 ```
 
-Replace `YOUR_SERVER_IP:PORT` with your server address.
+**Matching Strategy:**
+- **Exact** → Fast lookup for known field names
+- **Semantic** → Embeddings compare meaning (threshold: 0.7)
+- **Fuzzy** → Pattern matching fallback
+- **LLM** → Only for truly complex/unique fields
 
-#### 3. Use It
+## Configuration
 
-1. Navigate to any job application form
-2. Open bookmarks and tap the bookmarklet
-3. The autofill menu appears
+Edit `constants.json` to customize your data:
+```json
+{
+  "first_name": "Luke",
+  "email": "you@example.com",
+  "authorized_to_work": "yes",
+  "years_experience": "5"
+}
+```
 
-## How It Works
+Or edit via the ⚙️ settings menu in the app.
 
-### Userscript Mode:
-1. Userscript auto-detects job application pages
-2. Injects `script.js` automatically when forms are detected
-3. Floating ✨ button appears in bottom-right corner
-4. Click → Fill Constants → Type "##" in complex fields → Fill LLM Fields
+## Supported Sites
 
-### Workflow:
-1. **Fill Constants** - Instantly fills name, email, phone, etc. from `constants.json`
-2. **Type "##"** - Mark any empty field where you want AI to write a custom answer
-3. **Fill LLM Fields** - AI generates personalized responses for marked fields
-4. **Done!** - Review and submit
+**All of them!** The userscript runs on every website (`@match *://*/*`)
 
-The system uses:
-- **Exact matching** for known fields (instant)
-- **Semantic matching** with embeddings for similar fields (fast)
-- **LLM fallback** only for complex/unusual questions (slower but smart)
+Tested on:
+- Greenhouse, Lever, Workday, Ashby, BambooHR
+- Google Forms
+- Custom application forms
+- Any website with `<input>` fields
 
-## Security Notes
+## API Endpoints
 
-- Uses self-signed SSL certificate (you'll see a warning on first visit)
-- HTTPS is required to work on modern HTTPS websites (mixed content blocking)
-- Server is exposed on your public IP - consider firewall rules if needed
+- `GET /autofill.user.js` - Userscript installer
+- `GET /script.js` - Main autofill script
+- `POST /api/fill-constants` - Fill with constants only
+- `POST /api/fill-llm` - Fill marked fields with AI
+- `GET /api/constants` - Get constants
+- `POST /api/constants` - Update constants
+
+## Architecture
+
+```
+User visits form page
+  ↓
+Userscript detects forms → Injects script.js
+  ↓
+1. Fill Constants (semantic matching)
+   - Batch embed constant keys at startup
+   - Cosine similarity: field vs cached vectors
+   - Threshold 0.7 → instant match
+  ↓
+2. User marks fields with "##"
+  ↓
+3. Fill LLM (only for marked fields)
+   - Send to Gemini Flash Lite
+   - Context: job description, resume, constants
+   - Generate personalized answer
+  ↓
+4. Done!
+```
+
+## Security
+
+- **Self-signed SSL** - Accept certificate warning on first visit
+- **HTTPS required** - Modern browsers block mixed content
+- **Local server** - Data never leaves your device/network
+- **API key** - Store Gemini API key in `.env` file
+
+## Troubleshooting
+
+**Button doesn't appear:**
+- Check Userscripts extension is enabled in Safari settings
+- Look for blue notification in top-right when page loads
+- Open Safari console (aA → Web Inspector) and check for `[Autofill]` logs
+
+**Certificate errors:**
+- Visit the userscript URL directly once and accept the warning
+- Certificate is valid for 365 days from creation
+
+**Semantic matcher failed:**
+- Check `GEMINI_API_KEY` is set in `.env`
+- Verify API key has embedding access
+- Falls back to fuzzy matching if embeddings fail
+
+**Forms not filling:**
+- Check browser console for errors
+- Verify server is running and accessible
+- Try manual fill using the menu buttons
+
+## Files
+
+- `public/autofill.user.js` - iOS Safari userscript
+- `public/script.js` - Main autofill logic
+- `internal/matcher/semantic_matcher.go` - Embedding-based matching
+- `internal/matcher/matcher.go` - Field matching logic
+- `internal/matcher/llm_matcher.go` - AI field filling
+- `constants.json` - Your personal data
+- `IOS_SETUP.md` - Detailed iOS setup guide
+
+## License
+
+MIT

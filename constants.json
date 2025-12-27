@@ -1,6 +1,6 @@
 {
-  "password": "Autodude123$",
-  "authorized_to_work": "yes",
+  "address": "9927 Cabin Creek dr.",
+  "authorized_to_work": true,
   "city": "Houston",
   "country": "United States",
   "email": "lukestogsdill@gmail.com",
@@ -10,12 +10,15 @@
   "linkedin_url": "https://linkedin.com/in/luke-stogsdill",
   "location": "Houston, TX 77064",
   "middle_name": "E",
-  "over_18": "yes",
+  "over_18": true,
+  "password": "Autodude123$",
   "phone": "(832) 392-2613",
-  "require_sponsorship": "no",
+  "require_sponsorship": false,
   "state": "TX",
+  "us_citizen": true,
   "website_url": "https://lustogs.com",
-  "willing_to_relocate": "yes",
+  "willing_to_relocate": true,
   "years_experience": "2",
-  "zip": "77064"
+  "zip": "77064",
+  "discharged": false
 }
