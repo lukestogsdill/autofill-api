@@ -109,20 +109,22 @@ func MatchField(label, fieldName, placeholder string, constants map[string]strin
 			return FieldMatchResult{Value: value, Source: "constant", Found: true}
 		}
 
-		// Try semantic matching if available (lowered threshold to 0.5 for better coverage)
+		// Try semantic matching if available (threshold: 0.60 for high confidence matches only)
 		semanticMatcher := GetSemanticMatcher()
 		if semanticMatcher != nil {
-			semanticResult := semanticMatcher.MatchFieldSemantically(normalizedLabel, 0.5)
+			semanticResult := semanticMatcher.MatchFieldSemantically(normalizedLabel, 0.60)
 			if semanticResult.Found {
-				log.Printf("🎯 Semantic match: '%s' → '%s' (%.2f similarity)", normalizedLabel, semanticResult.Key, semanticResult.Similarity)
+				log.Printf("  🎯 Semantic: '%s' → '%s' (%.3f)", normalizedLabel, semanticResult.Key, semanticResult.Similarity)
 				if value, exists := constants[semanticResult.Key]; exists {
 					if hasNegation {
 						value = invertBoolean(value)
 					}
 					return FieldMatchResult{Value: value, Source: "constant", Found: true}
 				}
-			} else {
-				log.Printf("⚠️  No semantic match for '%s' (best: %s @ %.2f)", normalizedLabel, semanticResult.Key, semanticResult.Similarity)
+			}
+			// Always log the best match even if below threshold (for debugging)
+			if !semanticResult.Found && semanticResult.Similarity > 0 {
+				log.Printf("  ⊘ Skip: '%s' (best: %s @ %.3f - below 0.60)", normalizedLabel, semanticResult.Key, semanticResult.Similarity)
 			}
 		}
 

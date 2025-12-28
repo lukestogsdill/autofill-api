@@ -371,7 +371,7 @@ func handleFill(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("responses/response_%s.json", timestamp)
 
 	// Create responses directory if it doesn't exist
-	if err := os.MkdirAll("responses", 0755); err != nil {
+	if err := os.MkdirAll("responses", 0605); err != nil {
 		log.Printf("⚠️  Failed to create responses directory: %v", err)
 	} else {
 		responseJSON, err := json.MarshalIndent(response, "", "  ")
@@ -659,7 +659,7 @@ func handleFillLLM(w http.ResponseWriter, r *http.Request) {
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	filename := fmt.Sprintf("responses/response_llm_%s.json", timestamp)
 
-	if err := os.MkdirAll("responses", 0755); err != nil {
+	if err := os.MkdirAll("responses", 0605); err != nil {
 		log.Printf("⚠️  Failed to create responses directory: %v", err)
 	} else {
 		responseJSON, err := json.MarshalIndent(response, "", "  ")

@@ -85,7 +85,7 @@ func main() {
 
 	// Step 5: Save outputs
 	log.Println("Saving outputs...")
-	if err := os.MkdirAll("generated", 0755); err != nil {
+	if err := os.MkdirAll("generated", 0605); err != nil {
 		log.Fatalf("Failed to create generated directory: %v", err)
 	}
 

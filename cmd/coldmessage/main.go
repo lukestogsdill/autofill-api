@@ -75,7 +75,7 @@ Looking forward to hearing from you!
 
 	// Step 5: Save output
 	log.Println("Saving output...")
-	if err := os.MkdirAll("generated", 0755); err != nil {
+	if err := os.MkdirAll("generated", 0605); err != nil {
 		log.Fatalf("Failed to create generated directory: %v", err)
 	}
 
